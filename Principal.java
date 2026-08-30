@@ -11,7 +11,6 @@ public class Principal {
                 System.out.println("-------");
                 System.out.println("> Início");
                 System.out.println("\n1 - Clientes");
-                System.out.println("\n1 - Clientes");
                 System.out.println("2 - Jogos");
                 System.out.println("3 - Cupons");
                 System.out.println("0 - Sair");
