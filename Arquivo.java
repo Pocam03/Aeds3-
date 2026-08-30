@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 
 public class Arquivo<T extends Registro> {
     private static final int TAM_CABECALHO = 12;
@@ -43,7 +44,7 @@ public class Arquivo<T extends Registro> {
         } else {
             arquivo.seek(endereco);
             arquivo.writeByte(' ');  // Remove a lápide
-            arquivo.writeShort(dados.length);
+            arquivo.skipBytes(2);
             arquivo.write(dados);
         }
         return obj.getId();
@@ -203,6 +204,29 @@ public class Arquivo<T extends Registro> {
             endereco = proximo;
         }
         return -1;
+    }
+
+    public ArrayList<T> readAll() throws Exception {
+        ArrayList<T> lista = new ArrayList<>();
+
+        arquivo.seek(TAM_CABECALHO);
+
+        while (arquivo.getFilePointer() < arquivo.length()) {
+            byte lapide = arquivo.readByte();
+            int tamanho = arquivo.readUnsignedShort();
+
+            byte[] dados = new byte[tamanho];
+            arquivo.readFully(dados);
+
+            // Só adiciona registros que não foram excluídos
+            if (lapide == ' ') {
+                T obj = construtor.newInstance();
+                obj.fromByteArray(dados);
+                lista.add(obj);
+            }
+        }
+
+        return lista;
     }
 
     public void close() throws Exception {

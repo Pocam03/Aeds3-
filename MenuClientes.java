@@ -1,5 +1,6 @@
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class MenuClientes {
@@ -20,6 +21,7 @@ public class MenuClientes {
             System.out.println("2 - Incluir");
             System.out.println("3 - Alterar");
             System.out.println("4 - Excluir");
+            System.out.println("5 - Listar todos os clientes");
             System.out.println("0 - Voltar");
 
             System.out.print("\nOpção: ");
@@ -41,6 +43,9 @@ public class MenuClientes {
                     break;
                 case 4:
                     excluirCliente();
+                    break;
+                case 5:
+                    listarClientes();
                     break;
                 case 0:
                     break;
@@ -156,4 +161,27 @@ public class MenuClientes {
             System.out.println("Erro ao excluir cliente.");
         }
     }
+
+    private void listarClientes() {
+    try {
+        ArrayList<Cliente> clientes =
+            clienteDAO.listarClientes();
+
+        if (clientes.isEmpty()) {
+            System.out.println("\nNenhum cliente cadastrado.");
+            return;
+        }
+
+        System.out.println("\nLista de clientes");
+
+        for (Cliente cliente : clientes) {
+            System.out.println(cliente);
+            System.out.println("-------------------------");
+        }
+
+    } catch (Exception e) {
+        System.out.println("Erro ao listar clientes.");
+        e.printStackTrace();
+    }
+}
 }
