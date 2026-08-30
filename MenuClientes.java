@@ -144,7 +144,7 @@ public class MenuClientes {
             }
 
             System.out.print("Confirma exclusão? (S/N): ");
-            char resp = console.next().charAt(0);
+            char resp = console.nextLine().trim().charAt(0);
             if (resp == 'S' || resp == 's') {
                 if (clienteDAO.excluirCliente(id)) {
                     System.out.println("Cliente excluído com sucesso.");
