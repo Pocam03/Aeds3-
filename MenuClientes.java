@@ -79,15 +79,12 @@ public class MenuClientes {
         String nome = console.nextLine();
         System.out.print("CPF (11 dígitos): ");
         String cpf = console.nextLine();
-        System.out.print("Salário: ");
-        float salario = console.nextFloat();
-        console.nextLine();
         System.out.print("Data de nascimento (DD/MM/AAAA): ");
         String dataStr = console.nextLine();
         LocalDate nascimento = LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
         try {
-            Cliente cliente = new Cliente(nome, cpf, salario, nascimento);
+            Cliente cliente = new Cliente(nome, cpf, nascimento);
             if (clienteDAO.incluirCliente(cliente)) {
                 System.out.println("Cliente incluído com sucesso.");
             } else {
@@ -117,10 +114,6 @@ public class MenuClientes {
             System.out.print("Novo CPF (vazio para manter): ");
             String cpf = console.nextLine();
             if (!cpf.isEmpty()) cliente.setCpf(cpf);
-
-            System.out.print("Novo salário (vazio para manter): ");
-            String salarioStr = console.nextLine();
-            if (!salarioStr.isEmpty()) cliente.setSalario(Float.parseFloat(salarioStr));
 
             System.out.print("Nova data de nascimento (DD/MM/AAAA, vazio para manter): ");
             String dataStr = console.nextLine();
