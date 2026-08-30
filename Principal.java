@@ -13,6 +13,7 @@ public class Principal {
                 System.out.println("\n1 - Clientes");
                 System.out.println("2 - Jogos");
                 System.out.println("3 - Cupons");
+                System.out.println("4 - Pedidos");
                 System.out.println("0 - Sair");
 
                 System.out.print("\nOpção: ");
@@ -32,10 +33,14 @@ public class Principal {
                          menuJogos.menu();
                          break;
                      case 3:
-                        MenuCupons menuCupons = new MenuCupons();
-                        menuCupons.menu();
-                        break;
-                    case 0:
+                          MenuCupons menuCupons = new MenuCupons();
+                          menuCupons.menu();
+                          break;
+                     case 4:
+                          MenuPedidos menuPedidos = new MenuPedidos();
+                          menuPedidos.menu();
+                          break;
+                     case 0:
                          System.out.println("Saindo...");
                          break;
                      default:
