@@ -1,5 +1,6 @@
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 public class ClienteDAO {
     private Arquivo<Cliente> arqClientes;
 
@@ -21,5 +22,9 @@ public class ClienteDAO {
 
     public boolean excluirCliente(int id) throws Exception {
         return arqClientes.delete(id);
+    }
+
+    public ArrayList<Cliente> listarClientes() throws Exception {
+        return arqClientes.readAll();
     }
 }

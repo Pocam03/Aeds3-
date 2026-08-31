@@ -1,5 +1,6 @@
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class MenuClientes {
@@ -20,6 +21,7 @@ public class MenuClientes {
             System.out.println("2 - Incluir");
             System.out.println("3 - Alterar");
             System.out.println("4 - Excluir");
+            System.out.println("5 - Listar todos os clientes");
             System.out.println("0 - Voltar");
 
             System.out.print("\nOpção: ");
@@ -41,6 +43,9 @@ public class MenuClientes {
                     break;
                 case 4:
                     excluirCliente();
+                    break;
+                case 5:
+                    listarClientes();
                     break;
                 case 0:
                     break;
@@ -74,15 +79,12 @@ public class MenuClientes {
         String nome = console.nextLine();
         System.out.print("CPF (11 dígitos): ");
         String cpf = console.nextLine();
-        System.out.print("Salário: ");
-        float salario = console.nextFloat();
-        console.nextLine();
         System.out.print("Data de nascimento (DD/MM/AAAA): ");
         String dataStr = console.nextLine();
         LocalDate nascimento = LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
         try {
-            Cliente cliente = new Cliente(nome, cpf, salario, nascimento);
+            Cliente cliente = new Cliente(nome, cpf, nascimento);
             if (clienteDAO.incluirCliente(cliente)) {
                 System.out.println("Cliente incluído com sucesso.");
             } else {
@@ -112,10 +114,6 @@ public class MenuClientes {
             System.out.print("Novo CPF (vazio para manter): ");
             String cpf = console.nextLine();
             if (!cpf.isEmpty()) cliente.setCpf(cpf);
-
-            System.out.print("Novo salário (vazio para manter): ");
-            String salarioStr = console.nextLine();
-            if (!salarioStr.isEmpty()) cliente.setSalario(Float.parseFloat(salarioStr));
 
             System.out.print("Nova data de nascimento (DD/MM/AAAA, vazio para manter): ");
             String dataStr = console.nextLine();
@@ -156,4 +154,27 @@ public class MenuClientes {
             System.out.println("Erro ao excluir cliente.");
         }
     }
+
+    private void listarClientes() {
+    try {
+        ArrayList<Cliente> clientes =
+            clienteDAO.listarClientes();
+
+        if (clientes.isEmpty()) {
+            System.out.println("\nNenhum cliente cadastrado.");
+            return;
+        }
+
+        System.out.println("\nLista de clientes");
+
+        for (Cliente cliente : clientes) {
+            System.out.println(cliente);
+            System.out.println("-------------------------");
+        }
+
+    } catch (Exception e) {
+        System.out.println("Erro ao listar clientes.");
+        e.printStackTrace();
+    }
+}
 }
