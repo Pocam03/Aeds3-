@@ -88,6 +88,7 @@ public class MenuJogos {
         try {
             Jogo jogo = new Jogo(titulo, desenvolvedora, classificacao, preco, ano);
             if (jogoDAO.incluirJogo(jogo)) {
+                System.out.println(jogo);
                 System.out.println("Jogo incluído com sucesso.");
             } else {
                 System.out.println("Erro ao incluir jogo.");

@@ -57,11 +57,51 @@ public class MenuClientes {
     }
 
     private void buscarCliente() {
+        int opcao;
+        do{
+            System.out.println("\nBuscar cliente por: ");
+            System.out.println("1 - ID");
+            System.out.println("2 - CPF");
+            System.out.println("0 - Cancelar");
+            System.out.print("\nOpção: ");
+            opcao = Integer.parseInt(console.nextLine());
+            switch (opcao) {
+                case 1:
+                    buscarClientePorId();
+                    break;
+                case 2:
+                    buscarClientePorCpf();
+                    break;
+                case 0:
+                    break;
+                default:
+                    System.out.println("Opção inválida!");
+                    break;
+            }
+        }while (opcao!= 1 && opcao != 2);
+    }
+        
+    private void buscarClientePorId() {
         System.out.print("\nID do cliente: ");
         int id = console.nextInt();
         console.nextLine();
         try {
             Cliente cliente = clienteDAO.buscarCliente(id);
+            if (cliente != null) {
+                System.out.println(cliente);
+            } else {
+                System.out.println("Cliente não encontrado.");
+            }
+        } catch (Exception e) {
+            System.out.println("Erro ao buscar cliente.");
+        }
+    }
+
+    private void buscarClientePorCpf() {
+        System.out.print("\nCPF do cliente: ");
+        String cpf = console.nextLine();
+        try {
+            Cliente cliente = clienteDAO.buscarClientePorCpf(cpf);
             if (cliente != null) {
                 System.out.println(cliente);
             } else {
@@ -86,6 +126,7 @@ public class MenuClientes {
         try {
             Cliente cliente = new Cliente(nome, cpf, nascimento);
             if (clienteDAO.incluirCliente(cliente)) {
+                System.out.println(cliente);
                 System.out.println("Cliente incluído com sucesso.");
             } else {
                 System.out.println("Erro ao incluir cliente.");

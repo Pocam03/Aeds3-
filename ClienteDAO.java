@@ -12,6 +12,16 @@ public class ClienteDAO {
         return arqClientes.read(id);
     }
 
+    public Cliente buscarClientePorCpf(String cpf) throws Exception {
+        ArrayList<Cliente> clientes = arqClientes.readAll();
+        for (Cliente cliente : clientes) {
+            if (cliente.getCpf().equals(cpf)) {
+                return cliente;
+            }
+        }
+        return null;
+    }
+
     public boolean incluirCliente(Cliente cliente) throws Exception {
         return arqClientes.create(cliente) > 0;
     }

@@ -85,6 +85,7 @@ public class MenuCupons {
         try {
             Cupom cupom = new Cupom(codigo, valor, porcentagem);
             if (cupomDAO.incluirCupom(cupom)) {
+                System.out.println(cupom);
                 System.out.println("Cupom incluído com sucesso.");
             } else {
                 System.out.println("Erro ao incluir cupom.");
