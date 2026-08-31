@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 public class CupomDAO {
     private Arquivo<Cupom> arqCupons;
 
@@ -19,5 +20,9 @@ public class CupomDAO {
 
     public boolean excluirCupom(int id) throws Exception {
         return arqCupons.delete(id);
+    }
+
+    public ArrayList<Cupom> listarCupons() throws Exception {
+        return arqCupons.readAll();
     }
 }
