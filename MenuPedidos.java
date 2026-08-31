@@ -16,17 +16,57 @@ public class MenuPedidos {
         cupomDAO = new CupomDAO();
     }
 
-    public void menu() {
+    public void menu(boolean admin) {
+        if (admin) {
+            menuAdmin();
+        } else {
+            menuCliente();
+        }
+    }
+
+    private void menuAdmin() {
         int opcao;
         do {
             System.out.println("\n\nAEDsIII");
             System.out.println("-------");
             System.out.println("> Início > Pedidos");
             System.out.println("\n1 - Buscar");
-            System.out.println("2 - Incluir");
+            System.out.println("2 - Listar todos os pedidos");
+            System.out.println("0 - Voltar");
+
+            System.out.print("\nOpção: ");
+            try {
+                opcao = Integer.valueOf(console.nextLine());
+            } catch (NumberFormatException e) {
+                opcao = -1;
+            }
+
+            switch (opcao) {
+                case 1:
+                    buscarPedido();
+                    break;
+                case 2:
+                    listarPedidos();
+                    break;
+                case 0:
+                    break;
+                default:
+                    System.out.println("Opção inválida!");
+                    break;
+            }
+        } while (opcao != 0);
+    }
+
+    private void menuCliente() {
+        int opcao;
+        do {
+            System.out.println("\n\nAEDsIII");
+            System.out.println("-------");
+            System.out.println("> Início > Pedidos");
+            System.out.println("\n1 - Buscar");
+            System.out.println("2 - Fazer novo pedido");
             System.out.println("3 - Alterar (jogos/cupom)");
-            System.out.println("4 - Excluir");
-            System.out.println("5 - Listar todos os pedidos");
+            System.out.println("4 - Cancelar compra");
             System.out.println("0 - Voltar");
 
             System.out.print("\nOpção: ");
@@ -48,9 +88,6 @@ public class MenuPedidos {
                     break;
                 case 4:
                     excluirPedido();
-                    break;
-                case 5:
-                    listarPedidos();
                     break;
                 case 0:
                     break;
