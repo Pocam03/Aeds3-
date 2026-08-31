@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class MenuCupons {
@@ -18,6 +19,7 @@ public class MenuCupons {
             System.out.println("2 - Incluir");
             System.out.println("3 - Alterar");
             System.out.println("4 - Excluir");
+            System.out.println("5 - Listar todos os cupons");
             System.out.println("0 - Voltar");
 
             System.out.print("\nOpção: ");
@@ -39,6 +41,9 @@ public class MenuCupons {
                     break;
                 case 4:
                     excluirCupom();
+                    break;
+                case 5:
+                    listarCupons();
                     break;
                 case 0:
                     break;
@@ -146,6 +151,28 @@ public class MenuCupons {
             }
         } catch (Exception e) {
             System.out.println("Erro ao excluir cupom.");
+        }
+    }
+
+    private void listarCupons() {
+        try {
+            ArrayList<Cupom> cupons = cupomDAO.listarCupons();
+
+            if (cupons.isEmpty()) {
+                System.out.println("\nNenhum cupom cadastrado.");
+                return;
+            }
+
+            System.out.println("\nLista de cupons");
+
+            for (Cupom cupom : cupons) {
+                System.out.println(cupom);
+                System.out.println("-------------------------");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Erro ao listar cupons.");
+            e.printStackTrace();
         }
     }
 }

@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class MenuJogos {
@@ -18,6 +19,7 @@ public class MenuJogos {
             System.out.println("2 - Incluir");
             System.out.println("3 - Alterar");
             System.out.println("4 - Excluir");
+            System.out.println("5 - Listar todos os jogos");
             System.out.println("0 - Voltar");
 
             System.out.print("\nOpção: ");
@@ -39,6 +41,9 @@ public class MenuJogos {
                     break;
                 case 4:
                     excluirJogo();
+                    break;
+                case 5:
+                    listarJogos();
                     break;
                 case 0:
                     break;
@@ -159,4 +164,27 @@ public class MenuJogos {
             System.out.println("Erro ao excluir jogo.");
         }
     }
+
+    private void listarJogos() {
+        try {
+            ArrayList<Jogo> jogos =
+                jogoDAO.listarJogos();
+
+            if (jogos.isEmpty()) {
+                System.out.println("\nNenhum jogo cadastrado.");
+                return;
+            }
+
+            System.out.println("\nLista de jogos");
+
+            for (Jogo jogo : jogos) {
+                System.out.println(jogo);
+                System.out.println("-------------------------");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Erro ao listar jogos.");
+            e.printStackTrace();
+        }
+    }   
 }

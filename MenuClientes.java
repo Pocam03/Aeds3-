@@ -156,25 +156,25 @@ public class MenuClientes {
     }
 
     private void listarClientes() {
-    try {
-        ArrayList<Cliente> clientes =
-            clienteDAO.listarClientes();
+        try {
+            ArrayList<Cliente> clientes =
+                clienteDAO.listarClientes();
 
-        if (clientes.isEmpty()) {
-            System.out.println("\nNenhum cliente cadastrado.");
-            return;
+            if (clientes.isEmpty()) {
+                System.out.println("\nNenhum cliente cadastrado.");
+                return;
+            }
+
+            System.out.println("\nLista de clientes");
+
+            for (Cliente cliente : clientes) {
+                System.out.println(cliente);
+                System.out.println("-------------------------");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Erro ao listar clientes.");
+            e.printStackTrace();
         }
-
-        System.out.println("\nLista de clientes");
-
-        for (Cliente cliente : clientes) {
-            System.out.println(cliente);
-            System.out.println("-------------------------");
-        }
-
-    } catch (Exception e) {
-        System.out.println("Erro ao listar clientes.");
-        e.printStackTrace();
     }
-}
 }
