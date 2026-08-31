@@ -111,13 +111,13 @@ public class MenuClientes {
             String nome = console.nextLine();
             if (!nome.isEmpty()) cliente.setNome(nome);
 
-            System.out.print("Novo CPF (vazio para manter): ");
+           /*  System.out.print("Novo CPF (vazio para manter): ");
             String cpf = console.nextLine();
             if (!cpf.isEmpty()) cliente.setCpf(cpf);
 
             System.out.print("Nova data de nascimento (DD/MM/AAAA, vazio para manter): ");
             String dataStr = console.nextLine();
-            if (!dataStr.isEmpty()) cliente.setNascimento(LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            if (!dataStr.isEmpty()) cliente.setNascimento(LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy")));*/
 
             if (clienteDAO.alterarCliente(cliente)) {
                 System.out.println("Cliente alterado com sucesso.");
