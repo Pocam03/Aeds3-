@@ -30,8 +30,10 @@ public class MenuPedidos {
             System.out.println("\n\nAEDsIII");
             System.out.println("-------");
             System.out.println("> Início > Pedidos");
-            System.out.println("\n1 - Buscar");
+            System.out.println("\n1 - Buscar (por ID)");
             System.out.println("2 - Listar todos os pedidos");
+            System.out.println("3 - Listar pedidos por CPF");
+            System.out.println("4 - Cancelar pedido (excluir)");
             System.out.println("0 - Voltar");
 
             System.out.print("\nOpção: ");
@@ -48,6 +50,12 @@ public class MenuPedidos {
                 case 2:
                     listarPedidos();
                     break;
+                case 3:
+                    listarPedidosCliente();
+                    break;
+                case 4:
+                    excluirPedido();
+                    break;
                 case 0:
                     break;
                 default:
@@ -63,10 +71,11 @@ public class MenuPedidos {
             System.out.println("\n\nAEDsIII");
             System.out.println("-------");
             System.out.println("> Início > Pedidos");
-            System.out.println("\n1 - Buscar");
-            System.out.println("2 - Fazer novo pedido");
-            System.out.println("3 - Alterar (jogos/cupom)");
-            System.out.println("4 - Cancelar compra");
+            System.out.println("\n1 - Buscar (por ID)");
+            System.out.println("2 - Listar meus pedidos (por CPF)");
+            System.out.println("3 - Fazer novo pedido");
+            System.out.println("4 - Alterar (jogos/cupom)");
+            System.out.println("5 - Cancelar pedido (excluir)");
             System.out.println("0 - Voltar");
 
             System.out.print("\nOpção: ");
@@ -81,12 +90,15 @@ public class MenuPedidos {
                     buscarPedido();
                     break;
                 case 2:
-                    incluirPedido();
+                    listarPedidosCliente();
                     break;
                 case 3:
-                    alterarPedido();
+                    incluirPedido();
                     break;
                 case 4:
+                    alterarPedido();
+                    break;
+                case 5:
                     excluirPedido();
                     break;
                 case 0:
@@ -96,6 +108,32 @@ public class MenuPedidos {
                     break;
             }
         } while (opcao != 0);
+    }
+
+    private void listarPedidosCliente() {
+        System.out.print("\nCPF do cliente: ");
+        String cpf = console.nextLine();
+        try {
+            Cliente cliente = clienteDAO.buscarClientePorCpf(cpf);
+            if (cliente == null) {
+                System.out.println("Cliente não encontrado.");
+                return;
+            }
+
+            ArrayList<Pedido> pedidos = pedidoDAO.listarPedidosPorCliente(cliente.getId());
+            if (pedidos.isEmpty()) {
+                System.out.println("Nenhum pedido encontrado para este cliente.");
+                return;
+            }
+
+            System.out.println("\nPedidos do cliente");
+            for (Pedido pedido : pedidos) {
+                System.out.println(pedido);
+                System.out.println("-------------------------");
+            }
+        } catch (Exception e) {
+            System.out.println("Erro ao buscar pedidos.");
+        }
     }
 
     private void buscarPedido() {
@@ -118,15 +156,15 @@ public class MenuPedidos {
         System.out.println("\nInclusão de pedido");
 
         try {
-            System.out.print("\nID do cliente: ");
-            int idCliente = console.nextInt();
-            console.nextLine();
+            System.out.print("\nCPF do cliente: ");
+            String cpf = console.nextLine();
 
-            Cliente cliente = clienteDAO.buscarCliente(idCliente);
+            Cliente cliente = clienteDAO.buscarClientePorCpf(cpf);
             if (cliente == null) {
                 System.out.println("Cliente não encontrado. Pedido cancelado.");
                 return;
             }
+            int idCliente = cliente.getId();
 
             ArrayList<Integer> idJogos = new ArrayList<>();
             boolean adicionando = true;

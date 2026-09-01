@@ -121,18 +121,23 @@ public class MenuClientes {
         String cpf = console.nextLine();
         System.out.print("Data de nascimento (DD/MM/AAAA): ");
         String dataStr = console.nextLine();
-        LocalDate nascimento = LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+        if (nome.isEmpty() || cpf.isEmpty() || dataStr.isEmpty()) {
+            System.out.println("Não foi possível registrar o cliente.");
+            return;
+        }
 
         try {
+            LocalDate nascimento = LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             Cliente cliente = new Cliente(nome, cpf, nascimento);
             if (clienteDAO.incluirCliente(cliente)) {
                 System.out.println(cliente);
                 System.out.println("Cliente incluído com sucesso.");
             } else {
-                System.out.println("Erro ao incluir cliente.");
+                System.out.println("Não foi possível registrar o cliente.");
             }
         } catch (Exception e) {
-            System.out.println("Erro ao incluir cliente.");
+            System.out.println("Não foi possível registrar o cliente.");
         }
     }
 

@@ -20,6 +20,16 @@ public class PedidoDAO {
         return arqPedidos.readAll();
     }
 
+    public ArrayList<Pedido> listarPedidosPorCliente(int idCliente) throws Exception {
+        ArrayList<Pedido> pedidosCliente = new ArrayList<>();
+        for (Pedido pedido : listarPedidos()) {
+            if (pedido.getIdCliente() == idCliente) {
+                pedidosCliente.add(pedido);
+            }
+        }
+        return pedidosCliente;
+    }
+
     /*
      Cria um novo pedido a partir do cliente, da lista de IDs de jogos
      e do ID de um cupom. Busca os jogos e o cupom, calcula o valor final e grava o pedido.
