@@ -195,19 +195,21 @@ public class MenuPedidos {
             System.out.print("Deseja aplicar um cupom? (S/N): ");
             char respCupom = console.nextLine().trim().charAt(0);
             if (respCupom == 'S' || respCupom == 's') {
-                System.out.print("ID do cupom: ");
-                idCupom = console.nextInt();
-                console.nextLine();
+                System.out.print("Código do cupom: ");
+                String codigoCupom = console.nextLine();
 
-                Cupom cupom = cupomDAO.buscarCupom(idCupom);
-                if (cupom == null) {
+                Cupom cupom = cupomDAO.buscarCupomPorCodigo(codigoCupom);
+                if (cupom != null) {
+                    idCupom = cupom.getId();
+                } else {
                     System.out.println("Cupom não encontrado. Pedido seguirá sem desconto.");
                     idCupom = -1;
                 }
             }
 
-            if (pedidoDAO.incluirPedido(idCliente, idJogos, idCupom)) {
-                System.out.println("Pedido incluído com sucesso.");
+            Pedido pedido = pedidoDAO.incluirPedido(idCliente, idJogos, idCupom);
+            if (pedido != null) {
+                System.out.printf("Pedido incluído com sucesso. Total: R$ %.2f%n", pedido.getValorFinal());
             } else {
                 System.out.println("Erro ao incluir pedido.");
             }
@@ -258,16 +260,15 @@ public class MenuPedidos {
             System.out.print("Alterar cupom do pedido? (S/N): ");
             char respCupom = console.nextLine().trim().charAt(0);
             if (respCupom == 'S' || respCupom == 's') {
-                System.out.print("Novo ID de cupom (-1 para remover cupom): ");
-                int idCupom = console.nextInt();
-                console.nextLine();
+                System.out.print("Novo código de cupom (vazio para remover cupom): ");
+                String codigoCupom = console.nextLine();
 
-                if (idCupom == -1) {
+                if (codigoCupom.isEmpty()) {
                     pedido.setIdCupom(-1);
                 } else {
-                    Cupom cupom = cupomDAO.buscarCupom(idCupom);
+                    Cupom cupom = cupomDAO.buscarCupomPorCodigo(codigoCupom);
                     if (cupom != null) {
-                        pedido.setIdCupom(idCupom);
+                        pedido.setIdCupom(cupom.getId());
                     } else {
                         System.out.println("Cupom não encontrado. Cupom não foi alterado.");
                     }

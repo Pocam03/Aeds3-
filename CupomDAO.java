@@ -10,6 +10,15 @@ public class CupomDAO {
         return arqCupons.read(id);
     }
 
+    public Cupom buscarCupomPorCodigo(String codigo) throws Exception {
+        for (Cupom cupom : listarCupons()) {
+            if (cupom.getCodigo().equals(codigo)) {
+                return cupom;
+            }
+        }
+        return null;
+    }
+
     public boolean incluirCupom(Cupom cupom) throws Exception {
         return arqCupons.create(cupom) > 0;
     }

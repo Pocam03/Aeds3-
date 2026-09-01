@@ -34,7 +34,7 @@ public class PedidoDAO {
      Cria um novo pedido a partir do cliente, da lista de IDs de jogos
      e do ID de um cupom. Busca os jogos e o cupom, calcula o valor final e grava o pedido.
      */
-    public boolean incluirPedido(int idCliente, ArrayList<Integer> idJogos, int idCupom) throws Exception {
+    public Pedido incluirPedido(int idCliente, ArrayList<Integer> idJogos, int idCupom) throws Exception {
         ArrayList<Jogo> jogosComprados = new ArrayList<>();
         for (int idJogo : idJogos) {
             Jogo jogo = jogoDAO.buscarJogo(idJogo);
@@ -51,7 +51,7 @@ public class PedidoDAO {
         Pedido pedido = new Pedido(idCliente, idJogos, idCupom);
         pedido.calcularValorFinal(jogosComprados, cupom);
 
-        return arqPedidos.create(pedido) > 0;
+        return arqPedidos.create(pedido) > 0 ? pedido : null;
     }
 
     /**
