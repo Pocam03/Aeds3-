@@ -1,26 +1,14 @@
-import java.util.Scanner;
+package controller;
+
+import view.AdminView;
 
 public class MenuAdmin {
-    private Scanner console = new Scanner(System.in);
+    private AdminView view = new AdminView();
 
     public void menu() throws Exception {
         int opcao;
         do {
-            System.out.println("\n\nAEDsIII");
-            System.out.println("-------");
-            System.out.println("> Início > Admin");
-            System.out.println("\n1 - Clientes");
-            System.out.println("2 - Jogos");
-            System.out.println("3 - Cupons");
-            System.out.println("4 - Pedidos");
-            System.out.println("0 - Sair");
-
-            System.out.print("\nOpção: ");
-            try {
-                opcao = Integer.valueOf(console.nextLine());
-            } catch (NumberFormatException e) {
-                opcao = -1;
-            }
+            opcao = view.exibirMenuPrincipal();
 
             switch (opcao) {
                 case 1:
@@ -40,10 +28,10 @@ public class MenuAdmin {
                     menuPedidos.menu(true);
                     break;
                 case 0:
-                    System.out.println("Saindo...");
+                    view.exibirSaindo();
                     break;
                 default:
-                    System.out.println("Opção inválida!");
+                    view.exibirOpcaoInvalidaMenu();
                     break;
             }
         } while (opcao != 0);
