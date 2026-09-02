@@ -1,4 +1,4 @@
-# Loja de Jogos — Trabalho Prático de AED III
+# Loja de Jogos: Trabalho Prático de AED III
 
 > Sistema acadêmico de gerenciamento de clientes, jogos, cupons e pedidos, desenvolvido em Java com persistência própria em arquivos binários.
 
