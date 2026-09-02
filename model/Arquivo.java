@@ -1,3 +1,5 @@
+package model;
+
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Constructor;

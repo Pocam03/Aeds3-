@@ -1,3 +1,6 @@
+package model;
+
+import java.util.ArrayList;
 public class CupomDAO {
     private Arquivo<Cupom> arqCupons;
 
@@ -7,6 +10,15 @@ public class CupomDAO {
 
     public Cupom buscarCupom(int id) throws Exception {
         return arqCupons.read(id);
+    }
+
+    public Cupom buscarCupomPorCodigo(String codigo) throws Exception {
+        for (Cupom cupom : listarCupons()) {
+            if (cupom.getCodigo().equals(codigo)) {
+                return cupom;
+            }
+        }
+        return null;
     }
 
     public boolean incluirCupom(Cupom cupom) throws Exception {
@@ -19,5 +31,9 @@ public class CupomDAO {
 
     public boolean excluirCupom(int id) throws Exception {
         return arqCupons.delete(id);
+    }
+
+    public ArrayList<Cupom> listarCupons() throws Exception {
+        return arqCupons.readAll();
     }
 }

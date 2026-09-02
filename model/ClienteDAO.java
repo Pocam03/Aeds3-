@@ -1,6 +1,7 @@
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+package model;
+
 import java.util.ArrayList;
+
 public class ClienteDAO {
     private Arquivo<Cliente> arqClientes;
 
@@ -10,6 +11,16 @@ public class ClienteDAO {
 
     public Cliente buscarCliente(int id) throws Exception {
         return arqClientes.read(id);
+    }
+
+    public Cliente buscarClientePorCpf(String cpf) throws Exception {
+        ArrayList<Cliente> clientes = arqClientes.readAll();
+        for (Cliente cliente : clientes) {
+            if (cliente.getCpf().equals(cpf)) {
+                return cliente;
+            }
+        }
+        return null;
     }
 
     public boolean incluirCliente(Cliente cliente) throws Exception {

@@ -1,3 +1,4 @@
+package model;
 
 import java.util.ArrayList;
 
@@ -20,11 +21,21 @@ public class PedidoDAO {
         return arqPedidos.readAll();
     }
 
+    public ArrayList<Pedido> listarPedidosPorCliente(int idCliente) throws Exception {
+        ArrayList<Pedido> pedidosCliente = new ArrayList<>();
+        for (Pedido pedido : listarPedidos()) {
+            if (pedido.getIdCliente() == idCliente) {
+                pedidosCliente.add(pedido);
+            }
+        }
+        return pedidosCliente;
+    }
+
     /*
      Cria um novo pedido a partir do cliente, da lista de IDs de jogos
      e do ID de um cupom. Busca os jogos e o cupom, calcula o valor final e grava o pedido.
      */
-    public boolean incluirPedido(int idCliente, ArrayList<Integer> idJogos, int idCupom) throws Exception {
+    public Pedido incluirPedido(int idCliente, ArrayList<Integer> idJogos, int idCupom) throws Exception {
         ArrayList<Jogo> jogosComprados = new ArrayList<>();
         for (int idJogo : idJogos) {
             Jogo jogo = jogoDAO.buscarJogo(idJogo);
@@ -41,7 +52,7 @@ public class PedidoDAO {
         Pedido pedido = new Pedido(idCliente, idJogos, idCupom);
         pedido.calcularValorFinal(jogosComprados, cupom);
 
-        return arqPedidos.create(pedido) > 0;
+        return arqPedidos.create(pedido) > 0 ? pedido : null;
     }
 
     /**

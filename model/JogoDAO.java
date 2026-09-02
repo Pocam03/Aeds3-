@@ -1,3 +1,6 @@
+package model;
+
+import java.util.ArrayList;
 
 public class JogoDAO {
     private Arquivo<Jogo> arqJogos;
@@ -20,5 +23,9 @@ public class JogoDAO {
 
     public boolean excluirJogo(int id) throws Exception {
         return arqJogos.delete(id);
+    }
+
+    public ArrayList<Jogo> listarJogos() throws Exception {
+        return arqJogos.readAll();
     }
 }
