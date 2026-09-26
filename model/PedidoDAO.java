@@ -6,11 +6,13 @@ public class PedidoDAO {
     private Arquivo<Pedido> arqPedidos;
     private JogoDAO jogoDAO;
     private CupomDAO cupomDAO;
+    private ArvoreBMais indiceCliente; // índice secundário sobre a FK Pedido.idCliente
 
     public PedidoDAO() throws Exception {
         arqPedidos = new Arquivo<>("pedidos", Pedido.class.getConstructor());
         jogoDAO = new JogoDAO();
         cupomDAO = new CupomDAO();
+        indiceCliente = new ArvoreBMais("./dados/pedidos/idx_cliente.db");
     }
 
     public Pedido buscarPedido(int id) throws Exception {
@@ -21,12 +23,16 @@ public class PedidoDAO {
         return arqPedidos.readAll();
     }
 
+    /**
+     * Consulta típica do relacionamento 1:N via FK: em vez de percorrer
+     * todo o arquivo de pedidos, busca no índice em Árvore B+ (chave =
+     * idCliente) os endereços dos pedidos daquele cliente e lê cada um
+     * diretamente pelo endereço.
+     */
     public ArrayList<Pedido> listarPedidosPorCliente(int idCliente) throws Exception {
         ArrayList<Pedido> pedidosCliente = new ArrayList<>();
-        for (Pedido pedido : listarPedidos()) {
-            if (pedido.getIdCliente() == idCliente) {
-                pedidosCliente.add(pedido);
-            }
+        for (long endereco : indiceCliente.buscar(idCliente)) {
+            pedidosCliente.add(arqPedidos.lerNoEndereco(endereco));
         }
         return pedidosCliente;
     }
@@ -52,7 +58,12 @@ public class PedidoDAO {
         Pedido pedido = new Pedido(idCliente, idJogos, idCupom);
         pedido.calcularValorFinal(jogosComprados, cupom);
 
-        return arqPedidos.create(pedido) > 0 ? pedido : null;
+        if (arqPedidos.create(pedido) <= 0) return null;
+
+        long endereco = arqPedidos.getEndereco(pedido.getId());
+        indiceCliente.inserir(idCliente, endereco);
+
+        return pedido;
     }
 
     /**
@@ -73,11 +84,34 @@ public class PedidoDAO {
             cupom = cupomDAO.buscarCupom(pedido.getIdCupom());
         }
 
+        long enderecoAntigo = arqPedidos.getEndereco(pedido.getId());
+
         pedido.calcularValorFinal(jogosComprados, cupom);
-        return arqPedidos.update(pedido);
+        boolean sucesso = arqPedidos.update(pedido);
+
+        if (sucesso) {
+            long enderecoNovo = arqPedidos.getEndereco(pedido.getId());
+            if (enderecoNovo != enderecoAntigo) {
+                // registro foi realocado (não coube no espaço antigo): reindexa
+                indiceCliente.remover(pedido.getIdCliente(), enderecoAntigo);
+                indiceCliente.inserir(pedido.getIdCliente(), enderecoNovo);
+            }
+        }
+
+        return sucesso;
     }
 
     public boolean excluirPedido(int id) throws Exception {
-        return arqPedidos.delete(id);
+        Pedido pedido = arqPedidos.read(id);
+        if (pedido == null) return false;
+
+        long endereco = arqPedidos.getEndereco(id);
+        boolean sucesso = arqPedidos.delete(id);
+
+        if (sucesso) {
+            indiceCliente.remover(pedido.getIdCliente(), endereco);
+        }
+
+        return sucesso;
     }
 }

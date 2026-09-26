@@ -208,6 +208,37 @@ public class Arquivo<T extends Registro> {
         return -1;
     }
 
+    public long getEndereco(int id) throws Exception {
+        arquivo.seek(TAM_CABECALHO);
+        while (arquivo.getFilePointer() < arquivo.length()) {
+            long posicao = arquivo.getFilePointer();
+            byte lapide = arquivo.readByte();
+            short tamanho = arquivo.readShort();
+            byte[] dados = new byte[tamanho];
+            arquivo.read(dados);
+
+            if (lapide == ' ') {
+                T obj = construtor.newInstance();
+                obj.fromByteArray(dados);
+                if (obj.getId() == id) {
+                    return posicao;
+                }
+            }
+        }
+        return -1;
+    }
+
+    public T lerNoEndereco(long endereco) throws Exception {
+        arquivo.seek(endereco);
+        arquivo.readByte(); // lápide (assume-se registro ativo)
+        short tamanho = arquivo.readShort();
+        byte[] dados = new byte[tamanho];
+        arquivo.read(dados);
+        T obj = construtor.newInstance();
+        obj.fromByteArray(dados);
+        return obj;
+    }
+
     public ArrayList<T> readAll() throws Exception {
         ArrayList<T> lista = new ArrayList<>();
 
