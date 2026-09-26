@@ -108,7 +108,8 @@ public class MenuClientes {
 
         try {
             LocalDate nascimento = LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-            Cliente cliente = new Cliente(nome, cpf, nascimento);
+            ArrayList<String> telefones = view.lerTelefones();
+            Cliente cliente = new Cliente(nome, cpf, nascimento, telefones);
             if (clienteDAO.incluirCliente(cliente)) {
                 view.exibirCliente(cliente);
                 view.exibirMensagem("Cliente incluído com sucesso.");
@@ -132,6 +133,12 @@ public class MenuClientes {
 
             String nome = view.lerNovoNome();
             if (!nome.isEmpty()) cliente.setNome(nome);
+
+            char alterarTelefones = view.lerConfirmacaoAlterarTelefones();
+            if (alterarTelefones == 'S' || alterarTelefones == 's') {
+                ArrayList<String> telefones = view.lerTelefones();
+                cliente.setTelefones(telefones);
+            }
 
             if (clienteDAO.alterarCliente(cliente)) {
                 view.exibirMensagem("Cliente alterado com sucesso.");

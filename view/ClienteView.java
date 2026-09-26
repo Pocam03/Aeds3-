@@ -66,8 +66,31 @@ public class ClienteView extends ConsoleView {
         return lerTexto("Data de nascimento (DD/MM/AAAA): ");
     }
 
+    public ArrayList<String> lerTelefones() {
+        int qtd = lerInteiro("Quantos telefones deseja cadastrar? ");
+        ArrayList<String> telefones = new ArrayList<>();
+
+        for (int i = 1; i <= qtd; i++) {
+            String telefone;
+            do {
+                telefone = lerTexto("Telefone " + i + " (11 dígitos): ");
+                if (!telefone.matches("\\d{11}")) {
+                    exibirLinha("Telefone inválido! Digite exatamente 11 dígitos numéricos.");
+                    telefone = null;
+                }
+            } while (telefone == null);
+            telefones.add(telefone);
+        }
+
+        return telefones;
+    }
+
     public String lerNovoNome() {
         return lerTexto("\nNovo nome (vazio para manter): ");
+    }
+
+    public char lerConfirmacaoAlterarTelefones() {
+        return lerConfirmacao("Deseja adicionar telefones? (S/N): ");
     }
 
     public char lerConfirmacaoExclusao() {
