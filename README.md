@@ -138,7 +138,29 @@ As entidades implementam a interface `Registro`, que define acesso ao ID e os m�
 
 Quando um registro é excluído, sua lápide é alterada e o espaço entra em uma lista encadeada de blocos disponíveis. Em uma atualização, o registro é sobrescrito no mesmo local quando o novo conteúdo cabe no espaço original; caso contrário, o bloco antigo é marcado como excluído e o conteúdo é realocado.
 
-## 9. Arquitetura proposta
+## 9. Índice de Hash Extensível (busca direta por PK)
+
+Cada entidade (`Cliente`, `Jogo`, `Cupom` e `Pedido`) possui um índice em **Hash Extensível** sobre sua chave primária, implementado em `HashExtensivel.java`. Ele mapeia `id -> endereço do registro em disco`, permitindo que `buscarX(id)`, `alterarX` e `excluirX` acessem o registro diretamente pelo endereço (`Arquivo.lerNoEndereco` / `updateNoEndereco` / `deleteNoEndereco`) em vez de percorrer sequencialmente o arquivo de dados até encontrar o ID.
+
+### Persistência
+
+O índice de cada entidade é gravado em dois arquivos binários dentro da pasta `dados/<entidade>/`:
+
+| Arquivo | Conteúdo |
+| --- | --- |
+| `idx_id_dir.db` | Diretório: profundidade global (`int`) seguida do vetor de endereços de baldes (`2^profundidadeGlobal` posições, cada uma um `long`). Reescrito por inteiro sempre que o diretório muda (duplica de tamanho). |
+| `idx_id_baldes.db` | Baldes de tamanho fixo, cada um com profundidade local (`int`), quantidade de entradas ocupadas (`int`) e até 4 pares chave/referência (`int` + `long`). |
+
+### Funcionamento
+
+- **Busca:** a chave é mapeada para uma posição do diretório usando seus bits menos significativos (`hash & (2^profundidadeGlobal - 1)`); o diretório aponta para um balde, percorrido linearmente (no máximo 4 entradas) até encontrar a chave.
+- **Inserção:** se o balde de destino já estiver cheio, ele é dividido em dois — duplicando o diretório antes, caso sua profundidade local já tenha alcançado a profundidade global — e as entradas são redistribuídas pelo bit recém-considerado.
+- **Remoção:** apenas remove a entrada do balde; não há fusão de baldes subdimensionados nem redução da profundidade global (mesma simplificação assumida na `ArvoreBMais`, sem impacto na corretude da busca).
+- **Consistência com o CRUD:** toda operação de criação, alteração e exclusão nos DAOs atualiza o índice na mesma chamada. Em um `update` cujo novo conteúdo não coube no espaço original (registro realocado), a entrada é reindexada para o novo endereço. Na primeira vez em que o índice passa a existir sobre um `.db` já povoado, ou depois de `JogoDAO.ordenarPorPreco()` (que reescreve `jogos.db` por inteiro e invalida todos os endereços), o índice é reconstruído varrendo o arquivo de dados (`Arquivo.reconstruirIndice`).
+
+O índice secundário em Árvore B+ sobre a FK `Pedido.idCliente` (`ArvoreBMais.java`, descrito na seção 8) continua funcionando em paralelo ao índice de PK, cada um resolvendo uma consulta diferente: um busca pedidos de um cliente (chave não única), o outro busca um registro específico pelo seu próprio ID (chave única).
+
+## 10. Arquitetura proposta
 
 ```mermaid
 flowchart LR
@@ -157,7 +179,7 @@ flowchart LR
 - **`model`:** contém as entidades, suas regras de serialização, os DAOs e a classe genérica de arquivo.
 - **`dados`:** armazena os arquivos binários gerados durante a execução.
 
-## 10. Validação de escopo
+## 11. Validação de escopo
 
 | Item | Atendido | Evidência |
 | --- | :---: | --- |
@@ -167,6 +189,7 @@ flowchart LR
 | Possui atributo multivalorado? | Sim | `Cliente.telefones` armazena vários números (campo fixo de 11 dígitos); `Pedido.idJogos` armazena vários IDs |
 | Possui campo de data? | Sim | `Cliente.nascimento` e `Pedido.data` |
 | Possui campo real? | Sim | `Jogo.preco` e `Pedido.valorFinal` |
+| Possui índice para busca direta por PK? | Sim | `HashExtensivel.java`, usado por `ClienteDAO`, `JogoDAO`, `CupomDAO` e `PedidoDAO` |
 
 ## Tecnologias utilizadas
 
@@ -190,6 +213,8 @@ Aeds3-/
 ├── model/
 │   ├── Arquivo.java
 │   ├── Registro.java
+│   ├── HashExtensivel.java        # índice de PK (todas as entidades)
+│   ├── ArvoreBMais.java           # índice secundário da FK Pedido.idCliente
 │   ├── Cliente.java e ClienteDAO.java
 │   ├── Jogo.java e JogoDAO.java
 │   ├── Cupom.java e CupomDAO.java
@@ -203,6 +228,10 @@ Aeds3-/
 │   ├── CupomView.java
 │   └── PedidoView.java
 └── dados/                         # criado automaticamente durante a execução
+    ├── clientes/clientes.db, idx_id_dir.db, idx_id_baldes.db
+    ├── cupons/cupons.db, idx_id_dir.db, idx_id_baldes.db
+    ├── jogos/jogos.db, idx_id_dir.db, idx_id_baldes.db
+    └── pedidos/pedidos.db, idx_id_dir.db, idx_id_baldes.db, idx_cliente.db
 ```
 
 ## Como executar
@@ -229,7 +258,8 @@ Os arquivos binários serão criados em `dados/`, relativamente ao diretório em
 
 ## Observações da implementação atual
 
-- As consultas por CPF e código de cupom percorrem sequencialmente os registros ativos.
+- As buscas por ID (PK) de qualquer entidade usam o índice em Hash Extensível (seção 9) e não percorrem mais o arquivo de dados sequencialmente.
+- As consultas por CPF e código de cupom (chaves que não são a PK) continuam percorrendo sequencialmente os registros ativos.
 - O DER identifica `cpf` e `codigo` como campos únicos, mas a versão atual ainda não impede duplicidades no momento do cadastro.
 - A integridade entre arquivos é controlada pela lógica da aplicação, sem chaves estrangeiras físicas.
 - O projeto ainda não inclui testes automatizados nem uma ferramenta de build como Maven ou Gradle.

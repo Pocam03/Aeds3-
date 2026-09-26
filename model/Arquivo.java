@@ -11,6 +11,7 @@ public class Arquivo<T extends Registro> {
     private RandomAccessFile arquivo;
     private String nomeArquivo;
     private Constructor<T> construtor;
+    private long ultimoEndereco = -1; // endereço do último registro gravado por create() ou updateNoEndereco()
 
     public Arquivo(String nomeArquivo, Constructor<T> construtor) throws Exception {
         File diretorio = new File("./dados");
@@ -50,7 +51,17 @@ public class Arquivo<T extends Registro> {
             arquivo.skipBytes(2);
             arquivo.write(dados);
         }
+        ultimoEndereco = endereco;
         return obj.getId();
+    }
+
+    /**
+     * Endereço em que o registro mais recente foi gravado por create() ou
+     * updateNoEndereco(). Permite indexar (PK -> endereço) num índice de
+     * hash extensível sem precisar de uma varredura extra do arquivo.
+     */
+    public long getUltimoEndereco() {
+        return ultimoEndereco;
     }
 
     public T read(int id) throws Exception {
@@ -238,6 +249,96 @@ public class Arquivo<T extends Registro> {
         T obj = construtor.newInstance();
         obj.fromByteArray(dados);
         return obj;
+    }
+
+    /**
+     * Versão de update() que recebe diretamente o endereço do registro (obtido
+     * por um índice, ex.: HashExtensivel), evitando a varredura sequencial que
+     * update(T) precisa fazer para localizar o registro pelo ID.
+     *
+     * Retorna o endereço final do registro: igual a `endereco` quando o novo
+     * conteúdo coube no espaço original, ou o endereço realocado quando não
+     * coube (mesma lógica de reaproveitamento/realocação de update()). Quem
+     * chama este método é responsável por reindexar a chave caso o endereço
+     * retornado seja diferente do original. Retorna -1 se não houver registro
+     * ativo no endereço informado.
+     */
+    public long updateNoEndereco(long endereco, T novoObj) throws Exception {
+        arquivo.seek(endereco);
+        byte lapide = arquivo.readByte();
+        if (lapide != ' ') return -1;
+        short tamanho = arquivo.readShort();
+
+        byte[] novosDados = novoObj.toByteArray();
+        short novoTam = (short) novosDados.length;
+
+        if (novoTam <= tamanho) {
+            arquivo.seek(endereco + 3);
+            arquivo.write(novosDados);
+            ultimoEndereco = endereco;
+            return endereco;
+        }
+
+        arquivo.seek(endereco);
+        arquivo.writeByte('*');
+        addDeleted(tamanho, endereco);
+
+        long novoEndereco = getDeleted(novosDados.length);
+        if (novoEndereco == -1) {
+            arquivo.seek(arquivo.length());
+            novoEndereco = arquivo.getFilePointer();
+            arquivo.writeByte(' ');
+            arquivo.writeShort(novoTam);
+            arquivo.write(novosDados);
+        } else {
+            arquivo.seek(novoEndereco);
+            arquivo.writeByte(' ');
+            arquivo.skipBytes(2);
+            arquivo.write(novosDados);
+        }
+        ultimoEndereco = novoEndereco;
+        return novoEndereco;
+    }
+
+    /**
+     * Versão de delete() que recebe diretamente o endereço do registro
+     * (obtido por um índice), evitando a varredura sequencial de delete(int).
+     */
+    public boolean deleteNoEndereco(long endereco) throws Exception {
+        arquivo.seek(endereco);
+        byte lapide = arquivo.readByte();
+        if (lapide != ' ') return false;
+        short tamanho = arquivo.readShort();
+
+        arquivo.seek(endereco);
+        arquivo.writeByte('*');
+        addDeleted(tamanho, endereco);
+        return true;
+    }
+
+    /**
+     * Popula um índice de hash extensível com (PK, endereço) de todos os
+     * registros ativos do arquivo. Usado para construir o índice na primeira
+     * vez em que ele passa a existir sobre um arquivo de dados já povoado, e
+     * para reconstruí-lo depois de operações que reescrevem o arquivo de
+     * dados por inteiro (ex.: ordenarPorIntercalacaoBalanceada), quando todos
+     * os endereços antigos ficam inválidos.
+     */
+    public void reconstruirIndice(HashExtensivel indice) throws Exception {
+        arquivo.seek(TAM_CABECALHO);
+        while (arquivo.getFilePointer() < arquivo.length()) {
+            long posicao = arquivo.getFilePointer();
+            byte lapide = arquivo.readByte();
+            short tamanho = arquivo.readShort();
+            byte[] dados = new byte[tamanho];
+            arquivo.read(dados);
+
+            if (lapide == ' ') {
+                T obj = construtor.newInstance();
+                obj.fromByteArray(dados);
+                indice.inserir(obj.getId(), posicao);
+            }
+        }
     }
 
     public ArrayList<T> readAll() throws Exception {

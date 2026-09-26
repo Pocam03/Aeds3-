@@ -1,5 +1,6 @@
 package model;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class PedidoDAO {
@@ -7,16 +8,26 @@ public class PedidoDAO {
     private JogoDAO jogoDAO;
     private CupomDAO cupomDAO;
     private ArvoreBMais indiceCliente; // índice secundário sobre a FK Pedido.idCliente
+    private HashExtensivel indiceId;   // índice de hash extensível para busca direta por PK (Pedido.id)
 
     public PedidoDAO() throws Exception {
         arqPedidos = new Arquivo<>("pedidos", Pedido.class.getConstructor());
         jogoDAO = new JogoDAO();
         cupomDAO = new CupomDAO();
         indiceCliente = new ArvoreBMais("./dados/pedidos/idx_cliente.db");
+
+        String arqDiretorio = "./dados/pedidos/idx_id_dir.db";
+        String arqBaldes = "./dados/pedidos/idx_id_baldes.db";
+        boolean indiceNovo = !new File(arqDiretorio).exists();
+
+        indiceId = new HashExtensivel(arqDiretorio, arqBaldes);
+        if (indiceNovo) arqPedidos.reconstruirIndice(indiceId); // popula o índice sobre dados pré-existentes
     }
 
     public Pedido buscarPedido(int id) throws Exception {
-        return arqPedidos.read(id);
+        long endereco = indiceId.buscar(id);
+        if (endereco == -1) return null;
+        return arqPedidos.lerNoEndereco(endereco);
     }
 
     public ArrayList<Pedido> listarPedidos() throws Exception {
@@ -60,7 +71,8 @@ public class PedidoDAO {
 
         if (arqPedidos.create(pedido) <= 0) return null;
 
-        long endereco = arqPedidos.getEndereco(pedido.getId());
+        long endereco = arqPedidos.getUltimoEndereco();
+        indiceId.inserir(pedido.getId(), endereco);
         indiceCliente.inserir(idCliente, endereco);
 
         return pedido;
@@ -84,31 +96,32 @@ public class PedidoDAO {
             cupom = cupomDAO.buscarCupom(pedido.getIdCupom());
         }
 
-        long enderecoAntigo = arqPedidos.getEndereco(pedido.getId());
+        long enderecoAntigo = indiceId.buscar(pedido.getId());
+        if (enderecoAntigo == -1) return false;
 
         pedido.calcularValorFinal(jogosComprados, cupom);
-        boolean sucesso = arqPedidos.update(pedido);
+        long enderecoNovo = arqPedidos.updateNoEndereco(enderecoAntigo, pedido);
+        boolean sucesso = enderecoNovo != -1;
 
-        if (sucesso) {
-            long enderecoNovo = arqPedidos.getEndereco(pedido.getId());
-            if (enderecoNovo != enderecoAntigo) {
-                // registro foi realocado (não coube no espaço antigo): reindexa
-                indiceCliente.remover(pedido.getIdCliente(), enderecoAntigo);
-                indiceCliente.inserir(pedido.getIdCliente(), enderecoNovo);
-            }
+        if (sucesso && enderecoNovo != enderecoAntigo) {
+            // registro foi realocado (não coube no espaço antigo): reindexa
+            indiceId.inserir(pedido.getId(), enderecoNovo);
+            indiceCliente.remover(pedido.getIdCliente(), enderecoAntigo);
+            indiceCliente.inserir(pedido.getIdCliente(), enderecoNovo);
         }
 
         return sucesso;
     }
 
     public boolean excluirPedido(int id) throws Exception {
-        Pedido pedido = arqPedidos.read(id);
-        if (pedido == null) return false;
+        long endereco = indiceId.buscar(id);
+        if (endereco == -1) return false;
 
-        long endereco = arqPedidos.getEndereco(id);
-        boolean sucesso = arqPedidos.delete(id);
+        Pedido pedido = arqPedidos.lerNoEndereco(endereco);
+        boolean sucesso = arqPedidos.deleteNoEndereco(endereco);
 
         if (sucesso) {
+            indiceId.remover(id);
             indiceCliente.remover(pedido.getIdCliente(), endereco);
         }
 
