@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 public class Arquivo<T extends Registro> {
     private static final int TAM_CABECALHO = 12;
@@ -260,6 +261,156 @@ public class Arquivo<T extends Registro> {
         }
 
         return lista;
+    }
+
+    /**
+     * Ordenação externa por intercalação balanceada (2 vias).
+     *
+     * Fase de distribuição: os registros ativos são lidos em blocos de
+     * tamanhoBloco (o suficiente para caber em memória e ser ordenado ali),
+     * cada bloco é ordenado e gravado como uma "corrida" alternando entre
+     * dois arquivos temporários (A0/A1).
+     *
+     * Fase de intercalação: a cada passada, pares de corridas de A0/A1 são
+     * intercalados em corridas do dobro do tamanho, gravadas alternando
+     * entre outros dois arquivos temporários (B0/B1); os papéis de origem e
+     * destino se invertem a cada passada, até restar uma única corrida com
+     * todos os registros — que então substitui o conteúdo do arquivo.
+     */
+    public void ordenarPorIntercalacaoBalanceada(Comparator<T> comparador, int tamanhoBloco) throws Exception {
+        ArrayList<T> registros = readAll();
+        if (registros.size() <= 1) return;
+
+        String pasta = new File(nomeArquivo).getParent();
+        String fA0 = pasta + "/tmp_ord_a0.db";
+        String fA1 = pasta + "/tmp_ord_a1.db";
+        String fB0 = pasta + "/tmp_ord_b0.db";
+        String fB1 = pasta + "/tmp_ord_b1.db";
+
+        int tamanhoCorrida = distribuirEmCorridas(registros, comparador, tamanhoBloco, fA0, fA1);
+
+        String origemA = fA0, origemB = fA1, destinoA = fB0, destinoB = fB1;
+        while (tamanhoCorrida < registros.size()) {
+            intercalarPasso(origemA, origemB, destinoA, destinoB, comparador, tamanhoCorrida);
+            tamanhoCorrida *= 2;
+
+            String tmp;
+            tmp = origemA; origemA = destinoA; destinoA = tmp;
+            tmp = origemB; origemB = destinoB; destinoB = tmp;
+        }
+
+        regravarOrdenado(origemA);
+
+        new File(fA0).delete();
+        new File(fA1).delete();
+        new File(fB0).delete();
+        new File(fB1).delete();
+    }
+
+    private void escreverRegistroTemp(RandomAccessFile raf, T obj) throws Exception {
+        byte[] dados = obj.toByteArray();
+        raf.writeShort(dados.length);
+        raf.write(dados);
+    }
+
+    private T lerRegistroTemp(RandomAccessFile raf) throws Exception {
+        if (raf.getFilePointer() >= raf.length()) return null;
+        short tamanho = raf.readShort();
+        byte[] dados = new byte[tamanho];
+        raf.readFully(dados);
+        T obj = construtor.newInstance();
+        obj.fromByteArray(dados);
+        return obj;
+    }
+
+    private int distribuirEmCorridas(ArrayList<T> registros, Comparator<T> comparador, int tamanhoBloco,
+                                      String arqA, String arqB) throws Exception {
+        new File(arqA).delete();
+        new File(arqB).delete();
+        RandomAccessFile rafA = new RandomAccessFile(arqA, "rw");
+        RandomAccessFile rafB = new RandomAccessFile(arqB, "rw");
+
+        boolean paraA = true;
+        for (int inicio = 0; inicio < registros.size(); inicio += tamanhoBloco) {
+            int fim = Math.min(inicio + tamanhoBloco, registros.size());
+            ArrayList<T> bloco = new ArrayList<>(registros.subList(inicio, fim));
+            bloco.sort(comparador);
+
+            RandomAccessFile destino = paraA ? rafA : rafB;
+            for (T obj : bloco) {
+                escreverRegistroTemp(destino, obj);
+            }
+            paraA = !paraA;
+        }
+
+        rafA.close();
+        rafB.close();
+        return tamanhoBloco;
+    }
+
+    private void intercalarPasso(String origemA, String origemB, String destinoA, String destinoB,
+                                  Comparator<T> comparador, int tamanhoCorrida) throws Exception {
+        new File(destinoA).delete();
+        new File(destinoB).delete();
+        RandomAccessFile rafOrigemA = new RandomAccessFile(origemA, "r");
+        RandomAccessFile rafOrigemB = new RandomAccessFile(origemB, "r");
+        RandomAccessFile rafDestinoA = new RandomAccessFile(destinoA, "rw");
+        RandomAccessFile rafDestinoB = new RandomAccessFile(destinoB, "rw");
+
+        boolean paraA = true;
+        while (rafOrigemA.getFilePointer() < rafOrigemA.length() || rafOrigemB.getFilePointer() < rafOrigemB.length()) {
+            RandomAccessFile destino = paraA ? rafDestinoA : rafDestinoB;
+            intercalarUmaCorrida(rafOrigemA, rafOrigemB, destino, comparador, tamanhoCorrida);
+            paraA = !paraA;
+        }
+
+        rafOrigemA.close();
+        rafOrigemB.close();
+        rafDestinoA.close();
+        rafDestinoB.close();
+    }
+
+    private void intercalarUmaCorrida(RandomAccessFile a, RandomAccessFile b, RandomAccessFile destino,
+                                       Comparator<T> comparador, int tamanhoCorrida) throws Exception {
+        int lidosA = 0, lidosB = 0;
+        T atualA = lerRegistroTemp(a);
+        lidosA = atualA != null ? 1 : lidosA;
+        T atualB = lerRegistroTemp(b);
+        lidosB = atualB != null ? 1 : lidosB;
+
+        while (atualA != null || atualB != null) {
+            if (atualA != null && (atualB == null || comparador.compare(atualA, atualB) <= 0)) {
+                escreverRegistroTemp(destino, atualA);
+                atualA = (lidosA < tamanhoCorrida) ? lerRegistroTemp(a) : null;
+                lidosA++;
+            } else {
+                escreverRegistroTemp(destino, atualB);
+                atualB = (lidosB < tamanhoCorrida) ? lerRegistroTemp(b) : null;
+                lidosB++;
+            }
+        }
+    }
+
+    private void regravarOrdenado(String arquivoOrdenado) throws Exception {
+        RandomAccessFile raf = new RandomAccessFile(arquivoOrdenado, "r");
+
+        arquivo.seek(0);
+        int ultimoId = arquivo.readInt();
+
+        arquivo.setLength(0);
+        arquivo.seek(0);
+        arquivo.writeInt(ultimoId);
+        arquivo.writeLong(-1); // lista de excluídos fica vazia: arquivo foi recompactado
+
+        T obj;
+        while ((obj = lerRegistroTemp(raf)) != null) {
+            byte[] dados = obj.toByteArray();
+            arquivo.writeByte(' ');
+            arquivo.writeShort(dados.length);
+            arquivo.write(dados);
+        }
+
+        raf.close();
     }
 
     public void close() throws Exception {

@@ -13,6 +13,7 @@ public class JogoView extends ConsoleView {
         exibirLinha("3 - Alterar");
         exibirLinha("4 - Excluir");
         exibirLinha("5 - Listar todos os jogos");
+        exibirLinha("6 - Ordenar jogos por preço");
         exibirLinha("0 - Voltar");
         return lerOpcao();
     }

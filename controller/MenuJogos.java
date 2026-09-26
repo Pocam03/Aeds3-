@@ -35,6 +35,9 @@ public class MenuJogos {
                 case 5:
                     listarJogos();
                     break;
+                case 6:
+                    ordenarJogosPorPreco();
+                    break;
                 case 0:
                     break;
                 default:
@@ -150,6 +153,16 @@ public class MenuJogos {
             view.exibirListaJogos(jogos);
         } catch (Exception e) {
             view.exibirMensagem("Erro ao listar jogos.");
+        }
+    }
+
+    private void ordenarJogosPorPreco() {
+        try {
+            jogoDAO.ordenarPorPreco();
+            view.exibirMensagem("\nJogos ordenados por preço (ordenação externa por intercalação balanceada).");
+            listarJogos();
+        } catch (Exception e) {
+            view.exibirMensagem("Erro ao ordenar jogos.");
         }
     }
 }
