@@ -96,12 +96,14 @@ flowchart LR
 
 O modelo contém quatro entidades principais:
 
-- **Cliente:** `id_cliente`, `nome`, `cpf` e `nascimento`;
+- **Cliente:** `id_cliente`, `nome`, `cpf`, `nascimento` e `telefones` (multivalorado, um cliente pode possuir vários telefones);
 - **Jogo:** `id_jogo`, `titulo`, `desenvolvedora`, `classificacao_indicativa`, `preco` e `ano_lancamento`;
 - **Cupom:** `id_cupom`, `codigo`, `valor` e `porcentagem`;
 - **Pedido:** `id_pedido`, `id_cliente`, `id_cupom`, `valor_final` e `data`.
 
 O relacionamento entre pedidos e jogos é muitos-para-muitos. No DER, ele é representado pela entidade associativa `Pedido_Jogo`. Na implementação atual em arquivos binários, essa associação é armazenada como uma lista de IDs de jogos dentro do próprio registro de `Pedido`.
+
+O relacionamento entre cliente e telefone é um-para-muitos (um cliente pode possuir vários telefones). Da mesma forma que `Pedido_Jogo`, essa relação é implementada como um atributo multivalorado embutido no próprio registro de `Cliente`, em vez de uma tabela separada: primeiro é gravada a quantidade de telefones e, em seguida, cada número (campo fixo de 11 dígitos).
 
 ## 8. Modelo de persistência
 
@@ -158,9 +160,9 @@ flowchart LR
 | Item | Atendido | Evidência |
 | --- | :---: | --- |
 | Possui pelo menos três entidades? | Sim | Cliente, Jogo, Cupom e Pedido |
-| Possui relacionamento 1:N? | Sim | Um cliente pode realizar vários pedidos; um cupom pode ser usado em vários pedidos |
+| Possui relacionamento 1:N? | Sim | Um cliente pode possuir vários telefones; um cliente pode realizar vários pedidos; um cupom pode ser usado em vários pedidos |
 | Possui relacionamento N:N? | Sim | Um pedido contém vários jogos e um jogo pode integrar vários pedidos |
-| Possui atributo multivalorado? | Sim | `Pedido.idJogos` armazena vários IDs |
+| Possui atributo multivalorado? | Sim | `Cliente.telefones` armazena vários números (campo fixo de 11 dígitos); `Pedido.idJogos` armazena vários IDs |
 | Possui campo de data? | Sim | `Cliente.nascimento` e `Pedido.data` |
 | Possui campo real? | Sim | `Jogo.preco` e `Pedido.valorFinal` |
 
