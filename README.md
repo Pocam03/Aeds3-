@@ -103,7 +103,9 @@ O modelo contém quatro entidades principais:
 
 O relacionamento entre pedidos e jogos é muitos-para-muitos. No DER, ele é representado pela entidade associativa `Pedido_Jogo`. Na implementação atual em arquivos binários, essa associação é armazenada como uma lista de IDs de jogos dentro do próprio registro de `Pedido`.
 
-O relacionamento entre cliente e telefone é um-para-muitos (um cliente pode possuir vários telefones). Da mesma forma que `Pedido_Jogo`, essa relação é implementada como um atributo multivalorado embutido no próprio registro de `Cliente`, em vez de uma tabela separada: primeiro é gravada a quantidade de telefones e, em seguida, cada número (campo fixo de 11 dígitos).
+Os relacionamentos um-para-muitos são implementados por chave estrangeira (FK): o registro do lado N guarda a chave primária (PK) da entidade do lado 1. `Pedido` é o lado N de duas relações desse tipo, através dos campos `idCliente` (FK para `Cliente.id`, relação **Cliente 1:N Pedido**) e `idCupom` (FK para `Cupom.id`, relação **Cupom 1:N Pedido**, usando `-1` quando não há cupom).
+
+O atributo `telefones` de `Cliente` é multivalorado, mas não é modelado por FK: em vez de existir uma entidade `Telefone` separada com uma chave estrangeira apontando para `Cliente`, os números ficam embutidos no próprio registro do cliente (quantidade seguida de cada número, campo fixo de 11 dígitos).
 
 ## 8. Modelo de persistência
 
@@ -160,7 +162,7 @@ flowchart LR
 | Item | Atendido | Evidência |
 | --- | :---: | --- |
 | Possui pelo menos três entidades? | Sim | Cliente, Jogo, Cupom e Pedido |
-| Possui relacionamento 1:N? | Sim | Um cliente pode possuir vários telefones; um cliente pode realizar vários pedidos; um cupom pode ser usado em vários pedidos |
+| Possui relacionamento 1:N? | Sim | `Pedido.idCliente` (FK) referencia `Cliente.id`: um cliente pode realizar vários pedidos; `Pedido.idCupom` (FK) referencia `Cupom.id`: um cupom pode ser usado em vários pedidos |
 | Possui relacionamento N:N? | Sim | Um pedido contém vários jogos e um jogo pode integrar vários pedidos |
 | Possui atributo multivalorado? | Sim | `Cliente.telefones` armazena vários números (campo fixo de 11 dígitos); `Pedido.idJogos` armazena vários IDs |
 | Possui campo de data? | Sim | `Cliente.nascimento` e `Pedido.data` |
