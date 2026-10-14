@@ -1,7 +1,7 @@
 package ui;
 
-import javax.swing.JOptionPane;
-import java.awt.Component;
+import javax.swing.*;
+import java.awt.*;
 
 public class UiUtil {
     public static void erro(Component pai, String titulo, Exception e) {
@@ -20,5 +20,15 @@ public class UiUtil {
     public static boolean confirmar(Component pai, String mensagem) {
         return JOptionPane.showConfirmDialog(pai, mensagem, "Confirmação", JOptionPane.YES_NO_OPTION)
                 == JOptionPane.YES_OPTION;
+    }
+        public static JPanel barraVoltar(JFrame janela) {
+        JButton btnVoltar = new JButton("\u2190 Voltar (trocar perfil)");
+        btnVoltar.addActionListener(e -> {
+            janela.dispose();
+            MainUI.escolherPerfil();
+        });
+        JPanel barra = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        barra.add(btnVoltar);
+        return barra;
     }
 }

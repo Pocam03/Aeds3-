@@ -17,7 +17,7 @@ public class TelaPrincipal extends JFrame {
 
         setLayout(new BorderLayout());
         add(abas, BorderLayout.CENTER);
-
+        add(UiUtil.barraVoltar(this), BorderLayout.SOUTH);
         setMinimumSize(new Dimension(820, 520));
         setLocationRelativeTo(null);
     }

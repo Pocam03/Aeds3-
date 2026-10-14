@@ -16,6 +16,7 @@ public class TelaCliente extends JFrame {
 
         setLayout(new BorderLayout());
         add(new PedidoPanel(false), BorderLayout.CENTER);
+        add(UiUtil.barraVoltar(this), BorderLayout.SOUTH);
 
         setMinimumSize(new Dimension(760, 480));
         setLocationRelativeTo(null);

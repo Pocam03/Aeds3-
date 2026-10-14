@@ -17,7 +17,7 @@ public class MainUI {
         SwingUtilities.invokeLater(MainUI::escolherPerfil);
     }
 
-    private static void escolherPerfil() {
+    static void escolherPerfil() {
         Object[] opcoes = {"Admin", "Cliente", "Sair"};
         int escolha = JOptionPane.showOptionDialog(null,
                 "Escolha o perfil de acesso:", "Loja de Jogos — AEDs III",
