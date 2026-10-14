@@ -26,7 +26,7 @@ O objetivo é aplicar conceitos de organização de arquivos e estruturas de dad
 
 ## 3. Requisitos funcionais
 
-- **RF01 — Gerenciar clientes:** incluir, buscar por ID ou CPF, alterar o nome, excluir e listar clientes ativos.
+- **RF01 — Gerenciar clientes:** incluir, buscar por ID ou CPF, alterar o nome e/ou os telefones, excluir e listar clientes ativos.
 - **RF02 — Gerenciar jogos:** incluir, buscar por ID, alterar, excluir e listar jogos ativos.
 - **RF03 — Gerenciar cupons:** incluir, buscar, alterar, excluir e listar cupons ativos; localizar um cupom pelo código ao montar um pedido.
 - **RF04 — Criar pedidos:** associar um cliente a um ou mais jogos.
@@ -36,16 +36,18 @@ O objetivo é aplicar conceitos de organização de arquivos e estruturas de dad
 - **RF08 — Consultar pedidos:** buscar por ID, listar todos ou filtrar os pedidos pelo CPF do cliente.
 - **RF09 — Cancelar pedidos:** excluir logicamente um pedido.
 - **RF10 — Oferecer perfis de navegação:** disponibilizar menus distintos para administrador e cliente.
+- **RF11 — Ordenar jogos por preço:** reorganizar `jogos.db` em ordem crescente de preço via ordenação externa por intercalação balanceada.
 
 ## 4. Requisitos não funcionais e características técnicas
 
 - Aplicação escrita em **Java**, sem dependências externas.
-- Interface textual baseada em menus e entrada pelo console.
+- Interface textual baseada em menus e entrada pelo console (ponto de entrada principal, `controller.Principal`).
+- Interface gráfica opcional em **Java Swing** (pacote `ui`, ponto de entrada `ui.MainUI`), reaproveitando os mesmos DAOs do console — ver seção 12.
 - Persistência obrigatória em arquivos binários locais.
 - Cabeçalho de 12 bytes em cada arquivo: último ID utilizado e início da lista de espaços excluídos.
 - Exclusão lógica por lápide, sem remoção física imediata do registro.
 - Reutilização de espaços disponíveis quando um bloco excluído comporta um novo registro.
-- Organização do código em camadas por meio dos pacotes `view`, `controller` e `model`.
+- Organização do código em camadas por meio dos pacotes `view`, `controller` e `model` (console), com `ui` como camada de apresentação alternativa (Swing) sobre o mesmo `model`.
 - Criação automática do diretório `dados/` durante o uso do sistema.
 
 ## 5. Atores
@@ -99,7 +101,7 @@ O modelo contém quatro entidades principais:
 - **Cliente:** `id_cliente`, `nome`, `cpf`, `nascimento` e `telefones` (multivalorado, um cliente pode possuir vários telefones);
 - **Jogo:** `id_jogo`, `titulo`, `desenvolvedora`, `classificacao_indicativa`, `preco` e `ano_lancamento`;
 - **Cupom:** `id_cupom`, `codigo`, `valor` e `porcentagem`;
-- **Pedido:** `id_pedido`, `id_cliente`, `id_cupom`, `valor_final` e `data`.
+- **Pedido:** `id_pedido`, `id_cliente`, `id_jogos` (multivalorado, a lista de jogos do pedido), `id_cupom`, `valor_final` e `data`.
 
 O relacionamento entre pedidos e jogos é muitos-para-muitos. No DER, ele é representado pela entidade associativa `Pedido_Jogo`. Na implementação atual em arquivos binários, essa associação é armazenada como uma lista de IDs de jogos dentro do próprio registro de `Pedido`.
 
@@ -138,11 +140,15 @@ As entidades implementam a interface `Registro`, que define acesso ao ID e os m�
 
 Quando um registro é excluído, sua lápide é alterada e o espaço entra em uma lista encadeada de blocos disponíveis. Em uma atualização, o registro é sobrescrito no mesmo local quando o novo conteúdo cabe no espaço original; caso contrário, o bloco antigo é marcado como excluído e o conteúdo é realocado.
 
-## 9. Índice de Hash Extensível (busca direta por PK)
+## 9. Índices do sistema
+
+O sistema usa dois índices persistidos em disco, cada um resolvendo uma consulta diferente: a **Hash Extensível** resolve "ache o registro com esta PK" (chave única); a **Árvore B+** resolve "ache todos os registros com esta FK" (chave não única).
+
+### 9.1 Hash Extensível (busca direta por PK)
 
 Cada entidade (`Cliente`, `Jogo`, `Cupom` e `Pedido`) possui um índice em **Hash Extensível** sobre sua chave primária, implementado em `HashExtensivel.java`. Ele mapeia `id -> endereço do registro em disco`, permitindo que `buscarX(id)`, `alterarX` e `excluirX` acessem o registro diretamente pelo endereço (`Arquivo.lerNoEndereco` / `updateNoEndereco` / `deleteNoEndereco`) em vez de percorrer sequencialmente o arquivo de dados até encontrar o ID.
 
-### Persistência
+#### Persistência
 
 O índice de cada entidade é gravado em dois arquivos binários dentro da pasta `dados/<entidade>/`:
 
@@ -151,14 +157,22 @@ O índice de cada entidade é gravado em dois arquivos binários dentro da pasta
 | `idx_id_dir.db` | Diretório: profundidade global (`int`) seguida do vetor de endereços de baldes (`2^profundidadeGlobal` posições, cada uma um `long`). Reescrito por inteiro sempre que o diretório muda (duplica de tamanho). |
 | `idx_id_baldes.db` | Baldes de tamanho fixo, cada um com profundidade local (`int`), quantidade de entradas ocupadas (`int`) e até 4 pares chave/referência (`int` + `long`). |
 
-### Funcionamento
+#### Funcionamento
 
 - **Busca:** a chave é mapeada para uma posição do diretório usando seus bits menos significativos (`hash & (2^profundidadeGlobal - 1)`); o diretório aponta para um balde, percorrido linearmente (no máximo 4 entradas) até encontrar a chave.
 - **Inserção:** se o balde de destino já estiver cheio, ele é dividido em dois — duplicando o diretório antes, caso sua profundidade local já tenha alcançado a profundidade global — e as entradas são redistribuídas pelo bit recém-considerado.
 - **Remoção:** apenas remove a entrada do balde; não há fusão de baldes subdimensionados nem redução da profundidade global (mesma simplificação assumida na `ArvoreBMais`, sem impacto na corretude da busca).
 - **Consistência com o CRUD:** toda operação de criação, alteração e exclusão nos DAOs atualiza o índice na mesma chamada. Em um `update` cujo novo conteúdo não coube no espaço original (registro realocado), a entrada é reindexada para o novo endereço. Na primeira vez em que o índice passa a existir sobre um `.db` já povoado, ou depois de `JogoDAO.ordenarPorPreco()` (que reescreve `jogos.db` por inteiro e invalida todos os endereços), o índice é reconstruído varrendo o arquivo de dados (`Arquivo.reconstruirIndice`).
 
-O índice secundário em Árvore B+ sobre a FK `Pedido.idCliente` (`ArvoreBMais.java`, descrito na seção 8) continua funcionando em paralelo ao índice de PK, cada um resolvendo uma consulta diferente: um busca pedidos de um cliente (chave não única), o outro busca um registro específico pelo seu próprio ID (chave única).
+### 9.2 Árvore B+ (consulta por FK `Pedido.idCliente`)
+
+Implementada em `ArvoreBMais.java` e usada só por `PedidoDAO`, é um índice secundário sobre a FK `Pedido.idCliente`: a chave é o ID do cliente, e o valor é o endereço físico do pedido em `pedidos.db`. Resolve `listarPedidosPorCliente(idCliente)` sem varrer o arquivo inteiro.
+
+- **Estrutura:** páginas de tamanho fixo num único arquivo (`idx_cliente.db`). Nós internos guardam só chaves separadoras e ponteiros de filho (sem dado nenhum); folhas guardam os pares `(idCliente, endereço)` e são encadeadas entre si por um ponteiro para a próxima folha, permitindo varredura sequencial sem subir/descer na árvore.
+- **Chaves duplicadas:** como vários pedidos podem ter o mesmo `idCliente`, cada ocorrência vira uma entrada própria na folha, ordenada por `(chave, endereço)`. Uma busca desce até a folha mais à esquerda onde aquela chave poderia estar e, a partir dali, acumula entradas continuando pelas folhas encadeadas enquanto a última chave lida não ultrapassar a chave buscada — assim nenhuma ocorrência é perdida mesmo quando o mesmo `idCliente` fica espalhado entre duas folhas.
+- **Inserção:** ao dividir uma folha cheia, a chave mediana é copiada pro nó pai e também permanece na folha nova (padrão de árvore B+); ao dividir um nó interno, a chave mediana sobe inteira, sem ficar duplicada em nenhum dos dois filhos.
+- **Remoção:** apenas remove a entrada da folha (seguindo a cadeia de folhas se a entrada não estiver na primeira que a busca encontra); não há fusão de nós subdimensionados, mesma simplificação assumida na Hash Extensível.
+- **Consistência com o CRUD:** `PedidoDAO.incluirPedido`, `alterarPedido` e `excluirPedido` atualizam a árvore na mesma chamada — inserindo `(idCliente, endereço)` ao criar, removendo e reinserindo com o novo endereço se o pedido for realocado numa alteração, e removendo ao excluir.
 
 ## 10. Arquitetura proposta
 
@@ -177,6 +191,7 @@ flowchart LR
 - **`view`:** apresenta menus, coleta dados e exibe mensagens no console.
 - **`controller`:** coordena as opções de administrador e cliente e chama os DAOs necessários.
 - **`model`:** contém as entidades, suas regras de serialização, os DAOs e a classe genérica de arquivo.
+- **`ui`:** camada de apresentação alternativa (Swing, seção 12) — substitui `view` + `controller` por telas que chamam os DAOs de `model` diretamente, sem view nem controller próprios.
 - **`dados`:** armazena os arquivos binários gerados durante a execução.
 
 ## 11. Validação de escopo
@@ -190,6 +205,36 @@ flowchart LR
 | Possui campo de data? | Sim | `Cliente.nascimento` e `Pedido.data` |
 | Possui campo real? | Sim | `Jogo.preco` e `Pedido.valorFinal` |
 | Possui índice para busca direta por PK? | Sim | `HashExtensivel.java`, usado por `ClienteDAO`, `JogoDAO`, `CupomDAO` e `PedidoDAO` |
+| Possui índice secundário (Árvore B+) para consulta por FK? | Sim | `ArvoreBMais.java`, usado por `PedidoDAO.listarPedidosPorCliente` sobre a FK `Pedido.idCliente` |
+| Possui ordenação externa por intercalação balanceada? | Sim | `Arquivo.ordenarPorIntercalacaoBalanceada`, usado por `JogoDAO.ordenarPorPreco()` para ordenar `Jogo.preco` |
+
+## 12. Interface gráfica (Swing)
+
+Além do console, o sistema tem uma interface gráfica opcional em **Java Swing**, no pacote `ui`. Ela não duplica regra de negócio nenhuma — cada tela chama exatamente os mesmos DAOs do `model` que o console usa (`ClienteDAO`, `JogoDAO`, `CupomDAO`, `PedidoDAO`), é só uma camada de apresentação diferente sobre a mesma persistência.
+
+### Perfis de acesso
+
+A GUI espelha o mesmo fluxo de perfis do console (`Principal` + `PrincipalView.exibirMenuPerfil`): `ui.MainUI` abre perguntando **Admin**, **Cliente** ou **Sair**.
+
+- **Admin** → `TelaPrincipal`, um `JFrame` com `JTabbedPane` de 4 abas (Clientes, Jogos, Cupons, Pedidos). Na aba de Pedidos, o Admin pode buscar (por ID ou CPF), listar todos e cancelar — mas **não** inclui nem altera pedido, igual `MenuPedidos.menu(true)`.
+- **Cliente** → `TelaCliente`, um `JFrame` só com a aba de Pedidos, em modo cliente: buscar (ID ou CPF), fazer novo pedido, alterar (jogos/cupom) e cancelar — sem "listar todos" (essa opção não existe pra esse perfil no console) e sem acesso a Clientes/Jogos/Cupons.
+
+### Padrão de cada aba
+
+Cada entidade segue a mesma estrutura: um `JPanel` com `JTable`/`DefaultTableModel` no centro (populada a partir do `listarX()` do DAO) e botões no topo pra cada operação. A tabela é recarregada automaticamente depois de qualquer inclusão, alteração ou exclusão. Erros de qualquer DAO (inclusive problemas de I/O) viram `JOptionPane.showMessageDialog` de erro; sucesso vira um `JOptionPane` informativo.
+
+Inclusão e alteração abrem um `JDialog` modal (`XFormDialog`) com Salvar/Cancelar. As restrições do console foram replicadas nos formulários:
+
+- **Cliente**: no modo editar, CPF e data de nascimento ficam desabilitados — só dá pra mudar nome e telefones (mesma regra de `MenuClientes.alterarCliente`). O editor de telefones valida 11 dígitos antes de aceitar.
+- **Jogo**: todos os campos são editáveis (igual `MenuJogos.alterarJogo`). O botão **"Ordenar por preço"** roda `JogoDAO.ordenarPorPreco()` (ordenação externa) e mostra num `JOptionPane` quantos registros foram ordenados e quanto tempo levou.
+- **Cupom**: todos os campos são editáveis (igual `MenuCupons.alterarCupom`).
+- **Pedido** (`PedidoFormDialog`) é o mais elaborado: resolve o cliente digitando o CPF, deixa escolher vários jogos numa lista de seleção múltipla, e aceita opcionalmente um código de cupom (resolvido via `CupomDAO.buscarCupomPorCodigo` antes de montar o pedido). No modo editar, o cliente do pedido não pode ser trocado — só jogos e cupom, igual o console.
+
+A busca de pedidos por CPF na GUI usa a Árvore B+ sobre a FK `Pedido.idCliente` (`ArvoreBMais.java`, consultada em `PedidoDAO.listarPedidosPorCliente`), do mesmo jeito que o console.
+
+### Executando
+
+Veja "Como executar" — compila junto com o resto (`ui/*.java`) e roda com `java -cp out ui.MainUI`.
 
 ## Tecnologias utilizadas
 
@@ -197,6 +242,7 @@ flowchart LR
 - API de arquivos `RandomAccessFile`
 - Serialização manual com `DataInputStream` e `DataOutputStream`
 - `LocalDate` para datas
+- Java Swing (interface gráfica opcional)
 - Mermaid para os diagramas renderizados pelo GitHub
 
 ## Estrutura do projeto
@@ -227,6 +273,15 @@ Aeds3-/
 │   ├── JogoView.java
 │   ├── CupomView.java
 │   └── PedidoView.java
+├── ui/                             # interface gráfica (Swing), opcional — ver seção 12
+│   ├── MainUI.java
+│   ├── TelaPrincipal.java         # perfil Admin: 4 abas
+│   ├── TelaCliente.java           # perfil Cliente: só Pedidos
+│   ├── ClientePanel.java e ClienteFormDialog.java
+│   ├── JogoPanel.java e JogoFormDialog.java
+│   ├── CupomPanel.java e CupomFormDialog.java
+│   ├── PedidoPanel.java e PedidoFormDialog.java
+│   └── UiUtil.java
 └── dados/                         # criado automaticamente durante a execução
     ├── clientes/clientes.db, idx_id_dir.db, idx_id_baldes.db
     ├── cupons/cupons.db, idx_id_dir.db, idx_id_baldes.db
@@ -242,19 +297,27 @@ Tenha um JDK instalado e confirme a disponibilidade dos comandos `javac` e `java
 
 ### Compilação
 
-Na raiz do projeto, execute:
+Na raiz do projeto, execute (o `ui/*.java` é opcional — só necessário se for usar a interface gráfica):
 
 ```bash
-javac -encoding UTF-8 -d out controller/*.java model/*.java view/*.java
+javac -encoding UTF-8 -d out controller/*.java model/*.java view/*.java ui/*.java
 ```
 
 ### Execução
+
+**Console** (`controller.Principal` — pede o perfil de acesso no início: Admin ou Cliente):
 
 ```bash
 java -cp out controller.Principal
 ```
 
-Os arquivos binários serão criados em `dados/`, relativamente ao diretório em que o programa for iniciado. Para preservar a base entre execuções, execute sempre a aplicação a partir da raiz do projeto.
+**Interface gráfica** (`ui.MainUI` — mesma pergunta de perfil, só que numa janela):
+
+```bash
+java -cp out ui.MainUI
+```
+
+Os arquivos binários serão criados em `dados/`, relativamente ao diretório em que o programa for iniciado. Para preservar a base entre execuções, execute sempre a aplicação a partir da raiz do projeto. Console e GUI compartilham os mesmos arquivos de dados — dá pra alternar entre os dois sem perder nada.
 
 ## Observações da implementação atual
 
