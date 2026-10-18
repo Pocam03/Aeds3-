@@ -103,7 +103,7 @@ O modelo contém quatro entidades principais:
 - **Cupom:** `id_cupom`, `codigo`, `valor` e `porcentagem`;
 - **Pedido:** `id_pedido`, `id_cliente`, `id_jogos` (multivalorado, a lista de jogos do pedido), `id_cupom`, `valor_final` e `data`.
 
-O relacionamento entre pedidos e jogos é muitos-para-muitos. No DER, ele é representado pela entidade associativa `Pedido_Jogo`. Na implementação atual em arquivos binários, essa associação é armazenada como uma lista de IDs de jogos dentro do próprio registro de `Pedido`.
+O relacionamento entre pedidos e jogos é muitos-para-muitos. No DER, ele é representado pela entidade associativa `Pedido_Jogo`. Na implementação, `Pedido_Jogo` é um arquivo próprio (`dados/pedido_jogo/pedido_jogo.db`, classe `PedidoJogo`) com `id`, `idPedido`, `idJogo` e uma cópia do `titulo` e do `preco` do jogo na data da compra. Dois índices em Árvore B+ permitem listar os jogos de um pedido (`idx_pedido.db`) e os pedidos de um jogo (`idx_jogo.db`). Como o item guarda a cópia dos dados, excluir um jogo do catálogo não altera nem apaga pedidos já realizados; os itens só são removidos quando o próprio pedido é excluído.
 
 Os relacionamentos um-para-muitos são implementados por chave estrangeira (FK): o registro do lado N guarda a chave primária (PK) da entidade do lado 1. `Pedido` é o lado N de duas relações desse tipo, através dos campos `idCliente` (FK para `Cliente.id`, relação **Cliente 1:N Pedido**) e `idCupom` (FK para `Cupom.id`, relação **Cupom 1:N Pedido**, usando `-1` quando não há cupom).
 
@@ -118,6 +118,7 @@ dados/
 ├── clientes/clientes.db
 ├── cupons/cupons.db
 ├── jogos/jogos.db
+├── pedido_jogo/pedido_jogo.db
 └── pedidos/pedidos.db
 ```
 

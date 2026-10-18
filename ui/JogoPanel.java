@@ -2,18 +2,24 @@ package ui;
 
 import model.Jogo;
 import model.JogoDAO;
+import model.PedidoJogo;
+import model.PedidoJogoDAO;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JogoPanel extends JPanel {
     private final JogoDAO jogoDAO;
+    private final PedidoJogoDAO pedidoJogoDAO;
     private final DefaultTableModel modeloTabela;
     private final JTable tabela;
 
     public JogoPanel() throws Exception {
         jogoDAO = new JogoDAO();
+        pedidoJogoDAO = new PedidoJogoDAO();
 
         setLayout(new BorderLayout(6, 6));
 
@@ -30,6 +36,10 @@ public class JogoPanel extends JPanel {
         JButton btnBuscarId = new JButton("Buscar por ID");
         JButton btnOrdenar = new JButton("Ordenar por preço");
         JButton btnAtualizar = new JButton("Atualizar lista");
+        JButton btnPedidosDoJogo = new JButton("Ver pedidos do jogo");
+        JButton btnExcluidos = new JButton("Jogos excluídos em pedidos");
+        btnPedidosDoJogo.addActionListener(e -> verPedidosDoJogo());
+        btnExcluidos.addActionListener(e -> verExcluidosEmPedidos());
 
         btnAdicionar.addActionListener(e -> adicionar());
         btnEditar.addActionListener(e -> editar());
@@ -45,6 +55,8 @@ public class JogoPanel extends JPanel {
         botoes.add(btnBuscarId);
         botoes.add(btnOrdenar);
         botoes.add(btnAtualizar);
+        botoes.add(btnPedidosDoJogo);
+        botoes.add(btnExcluidos);
         add(botoes, BorderLayout.NORTH);
 
         recarregar();
@@ -124,11 +136,21 @@ public class JogoPanel extends JPanel {
             UiUtil.erro(this, "Nenhuma seleção", "Selecione um jogo na tabela.");
             return;
         }
-        if (!UiUtil.confirmar(this, "Confirma a exclusão do jogo " + id + "?")) return;
+        int emPedidos;
+        try {
+            emPedidos = pedidoJogoDAO.listarPorJogo(id).size();
+        } catch (Exception ex) {
+            UiUtil.erro(this, "Erro ao consultar pedidos do jogo", ex);
+            return;
+        }
+        String aviso = emPedidos == 0 ? ""
+                : "\n\nEste jogo consta em " + emPedidos + " item(ns) de pedido. Os pedidos já realizados serão preservados.";
+        if (!UiUtil.confirmar(this, "Confirma a exclusão do jogo " + id + "?" + aviso)) return;
 
         try {
             if (jogoDAO.excluirJogo(id)) {
-                UiUtil.info(this, "Sucesso", "Jogo excluído com sucesso.");
+                UiUtil.info(this, "Sucesso", "Jogo excluído com sucesso."
+                        + (emPedidos == 0 ? "" : "\nOs " + emPedidos + " item(ns) de pedido continuam registrados."));
                 recarregar();
             } else {
                 UiUtil.erro(this, "Erro", "Não foi possível excluir o jogo.");
@@ -172,6 +194,44 @@ public class JogoPanel extends JPanel {
                     "Tempo de execução: " + duracaoMs + " ms");
         } catch (Exception ex) {
             UiUtil.erro(this, "Erro ao ordenar jogos", ex);
+        }
+    }
+
+    /** Lado "jogo" do N:N: em quais pedidos este jogo aparece (índice B+ por idJogo). */
+    private void verPedidosDoJogo() {
+        int id = idSelecionado();
+        if (id == -1) {
+            UiUtil.erro(this, "Nenhuma seleção", "Selecione um jogo na tabela.");
+            return;
+        }
+        try {
+            List<Object[]> linhas = new ArrayList<>();
+            for (PedidoJogo item : pedidoJogoDAO.listarPorJogo(id)) {
+                linhas.add(new Object[]{item.getIdPedido(), item.getTitulo(), String.format("R$ %.2f", item.getPreco())});
+            }
+            UiUtil.mostrarTabela(this, "Pedidos do jogo " + id,
+                    "Pedidos que contêm o jogo " + id + " (" + linhas.size() + ")",
+                    new String[]{"ID Pedido", "Título (na compra)", "Preço pago"}, linhas);
+        } catch (Exception ex) {
+            UiUtil.erro(this, "Erro ao listar pedidos do jogo", ex);
+        }
+    }
+
+    /** Prova da persistência: jogos que já saíram do catálogo mas seguem nos pedidos. */
+    private void verExcluidosEmPedidos() {
+        try {
+            List<Object[]> linhas = new ArrayList<>();
+            for (PedidoJogo item : pedidoJogoDAO.listarTodos()) {
+                if (jogoDAO.buscarJogo(item.getIdJogo()) == null) {
+                    linhas.add(new Object[]{item.getIdPedido(), item.getIdJogo(), item.getTitulo(),
+                            String.format("R$ %.2f", item.getPreco())});
+                }
+            }
+            UiUtil.mostrarTabela(this, "Jogos excluídos ainda presentes em pedidos",
+                    "Itens de pedidos cujo jogo não existe mais no catálogo (" + linhas.size() + ")",
+                    new String[]{"ID Pedido", "ID Jogo", "Título (na compra)", "Preço pago"}, linhas);
+        } catch (Exception ex) {
+            UiUtil.erro(this, "Erro ao listar itens", ex);
         }
     }
 

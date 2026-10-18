@@ -196,7 +196,7 @@ public class MenuPedidos {
                 return;
             }
 
-            view.exibirJogosAtuais(pedido.getIdJogos());
+            view.exibirJogosAtuais(pedido.getItens());
             char respAdd = view.lerAdicionarNovoJogo();
             if (respAdd == 'S' || respAdd == 's') {
                 int idJogo = view.lerIdJogoAdicionar();

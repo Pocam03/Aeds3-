@@ -7,7 +7,11 @@ import java.util.ArrayList;
 public class Pedido implements Registro {
     private int id;
     private int idCliente;
+    // Os jogos do pedido NÃO ficam neste registro: vivem na entidade associativa
+    // Pedido_Jogo (PedidoJogoDAO), com cópia de título/preço da data da compra.
+    // Os campos abaixo são preenchidos pelo PedidoDAO ao carregar o pedido.
     private ArrayList<Integer> idJogos;
+    private ArrayList<PedidoJogo> itens = new ArrayList<>();
     private int idCupom;       // -1 se não houver cupom
     private float valorFinal;
     private LocalDate data;
@@ -41,6 +45,14 @@ public class Pedido implements Registro {
     public void adicionarJogo(int idJogo) { this.idJogos.add(idJogo); }
     public void removerJogo(int idJogo) { this.idJogos.remove(Integer.valueOf(idJogo)); }
 
+    /** Itens gravados do pedido (com título e preço da época da compra). */
+    public ArrayList<PedidoJogo> getItens() { return itens; }
+    public void setItens(ArrayList<PedidoJogo> itens) {
+        this.itens = itens;
+        this.idJogos = new ArrayList<>();
+        for (PedidoJogo item : itens) this.idJogos.add(item.getIdJogo());
+    }
+
     public int getIdCupom() { return idCupom; }
     public void setIdCupom(int idCupom) { this.idCupom = idCupom; }
 
@@ -51,14 +63,14 @@ public class Pedido implements Registro {
     public void setData(LocalDate data) { this.data = data; }
 
     /**
-     * Calcula o valor final do pedido somando o preço dos jogos
-     * comprados e aplicando o desconto do cupom (se houver).
+     * Calcula o valor final do pedido somando o preço (da época da compra)
+     * dos itens e aplicando o desconto do cupom (se houver).
      * Atualiza o campo valorFinal e retorna o valor calculado.
      */
-    public float calcularValorFinal(ArrayList<Jogo> jogosComprados, Cupom cupom) {
+    public float calcularValorFinal(ArrayList<PedidoJogo> itensComprados, Cupom cupom) {
         float total = 0F;
-        for (Jogo jogo : jogosComprados) {
-            total += jogo.getPreco();
+        for (PedidoJogo item : itensComprados) {
+            total += item.getPreco();
         }
 
         if (cupom != null) {
@@ -84,11 +96,6 @@ public class Pedido implements Registro {
         dos.writeInt(this.id);
         dos.writeInt(this.idCliente);
 
-        dos.writeInt(this.idJogos.size());
-        for (int idJogo : this.idJogos) {
-            dos.writeInt(idJogo);
-        }
-
         dos.writeInt(this.idCupom);
         dos.writeFloat(this.valorFinal);
         dos.writeLong(this.data.toEpochDay());
@@ -102,12 +109,8 @@ public class Pedido implements Registro {
         this.id = dis.readInt();
         this.idCliente = dis.readInt();
 
-        int qtdJogos = dis.readInt();
         this.idJogos = new ArrayList<>();
-        for (int i = 0; i < qtdJogos; i++) {
-            this.idJogos.add(dis.readInt());
-        }
-
+        this.itens = new ArrayList<>();
         this.idCupom = dis.readInt();
         this.valorFinal = dis.readFloat();
         this.data = LocalDate.ofEpochDay(dis.readLong());
@@ -117,7 +120,7 @@ public class Pedido implements Registro {
     public String toString() {
         return "\nID............: " + this.id +
                "\nID Cliente....: " + this.idCliente +
-               "\nJogos (IDs)...: " + this.idJogos +
+               "\nJogos.........: " + this.itens +
                "\nID Cupom......: " + (this.idCupom == -1 ? "Nenhum" : this.idCupom) +
                "\nValor Final...: " + this.valorFinal +
                "\nData..........: " + this.data;

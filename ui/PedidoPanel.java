@@ -60,6 +60,10 @@ public class PedidoPanel extends JPanel {
             botoes.add(btnEditar);
         }
 
+        JButton btnVerJogos = new JButton("Ver jogos do pedido");
+        btnVerJogos.addActionListener(e -> verJogosDoPedido());
+        botoes.add(btnVerJogos);
+
         JButton btnExcluir = new JButton("Cancelar pedido");
         btnExcluir.addActionListener(e -> excluir());
         botoes.add(btnExcluir);
@@ -157,6 +161,41 @@ public class PedidoPanel extends JPanel {
             }
         } catch (Exception ex) {
             UiUtil.erro(this, "Erro ao alterar pedido", ex);
+        }
+    }
+
+    /**
+     * Mostra o lado N:N do pedido: cada jogo do pedido (Pedido_Jogo) com o
+     * título e o preço gravados na compra, comparados com o catálogo atual.
+     */
+    private void verJogosDoPedido() {
+        int id = idSelecionado();
+        if (id == -1) {
+            UiUtil.erro(this, "Nenhuma seleção", "Selecione um pedido na tabela.");
+            return;
+        }
+        try {
+            Pedido pedido = pedidoDAO.buscarPedido(id);
+            if (pedido == null) {
+                UiUtil.erro(this, "Não encontrado", "Pedido não encontrado.");
+                return;
+            }
+            java.util.List<Object[]> linhas = new ArrayList<>();
+            for (PedidoJogo item : pedido.getItens()) {
+                Jogo atual = jogoDAO.buscarJogo(item.getIdJogo());
+                linhas.add(new Object[]{
+                        item.getIdJogo(), item.getTitulo(),
+                        String.format("R$ %.2f", item.getPreco()),
+                        atual == null ? "Excluído do catálogo" : "No catálogo",
+                        atual == null ? "-" : String.format("R$ %.2f", atual.getPreco())
+                });
+            }
+            UiUtil.mostrarTabela(this, "Jogos do pedido " + id,
+                    "Pedido " + id + " — valor final R$ " + String.format("%.2f", pedido.getValorFinal())
+                            + " (dados gravados na compra)",
+                    new String[]{"ID Jogo", "Título (na compra)", "Preço pago", "Situação", "Preço atual"}, linhas);
+        } catch (Exception ex) {
+            UiUtil.erro(this, "Erro ao carregar jogos do pedido", ex);
         }
     }
 

@@ -3,6 +3,7 @@ package view;
 import java.util.ArrayList;
 
 import model.Pedido;
+import model.PedidoJogo;
 
 public class PedidoView extends ConsoleView {
 
@@ -103,8 +104,8 @@ public class PedidoView extends ConsoleView {
         System.out.printf("Pedido incluído com sucesso. Total: R$ %.2f%n", total);
     }
 
-    public void exibirJogosAtuais(ArrayList<Integer> idJogos) {
-        exibirLinha("\nJogos atuais (IDs): " + idJogos);
+    public void exibirJogosAtuais(ArrayList<PedidoJogo> itens) {
+        exibirLinha("\nJogos atuais: " + itens);
     }
 
     public char lerAdicionarNovoJogo() {

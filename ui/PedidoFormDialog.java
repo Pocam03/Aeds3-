@@ -32,14 +32,26 @@ public class PedidoFormDialog extends JDialog {
         final String titulo;
         final float preco;
 
+        final boolean removidoDoCatalogo;
+
         JogoItem(Jogo j) {
             this.id = j.getId();
             this.titulo = j.getTitulo();
             this.preco = j.getPreco();
+            this.removidoDoCatalogo = false;
+        }
+
+        // item de um pedido já gravado (título/preço da época da compra)
+        JogoItem(PedidoJogo item, boolean removidoDoCatalogo) {
+            this.id = item.getIdJogo();
+            this.titulo = item.getTitulo();
+            this.preco = item.getPreco();
+            this.removidoDoCatalogo = removidoDoCatalogo;
         }
 
         public String toString() {
-            return id + " - " + titulo + " (R$ " + String.format("%.2f", preco) + ")";
+            return id + " - " + titulo + " (R$ " + String.format("%.2f", preco) + ")"
+                    + (removidoDoCatalogo ? " [fora do catálogo]" : "");
         }
     }
 
@@ -133,9 +145,9 @@ public class PedidoFormDialog extends JDialog {
             idClienteResolvido = pedido.getIdCliente();
             labelCliente.setText("Cliente: " + (cliente != null ? cliente.getNome() : "ID " + pedido.getIdCliente()));
 
-            for (int idJogo : pedido.getIdJogos()) {
-                Jogo j = jogoDAO.buscarJogo(idJogo);
-                if (j != null) modeloNoPedido.addElement(new JogoItem(j));
+            for (PedidoJogo item : pedido.getItens()) {
+                boolean removido = jogoDAO.buscarJogo(item.getIdJogo()) == null;
+                modeloNoPedido.addElement(new JogoItem(item, removido));
             }
 
             if (pedido.getIdCupom() != -1) {
