@@ -50,7 +50,10 @@ public class Pedido implements Registro {
     public void setItens(ArrayList<PedidoJogo> itens) {
         this.itens = itens;
         this.idJogos = new ArrayList<>();
-        for (PedidoJogo item : itens) this.idJogos.add(item.getIdJogo());
+        // um ID repetido na lista = uma unidade a mais do mesmo jogo
+        for (PedidoJogo item : itens) {
+            for (int i = 0; i < item.getQuantidade(); i++) this.idJogos.add(item.getIdJogo());
+        }
     }
 
     public int getIdCupom() { return idCupom; }
@@ -63,14 +66,14 @@ public class Pedido implements Registro {
     public void setData(LocalDate data) { this.data = data; }
 
     /**
-     * Calcula o valor final do pedido somando o preço (da época da compra)
-     * dos itens e aplicando o desconto do cupom (se houver).
+     * Calcula o valor final do pedido somando preço (da época da compra) x
+     * quantidade de cada item e aplicando o desconto do cupom (se houver).
      * Atualiza o campo valorFinal e retorna o valor calculado.
      */
     public float calcularValorFinal(ArrayList<PedidoJogo> itensComprados, Cupom cupom) {
         float total = 0F;
         for (PedidoJogo item : itensComprados) {
-            total += item.getPreco();
+            total += item.getSubtotal();
         }
 
         if (cupom != null) {

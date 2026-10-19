@@ -121,7 +121,7 @@ public class PedidoView extends ConsoleView {
     }
 
     public void exibirJogoRemovido() {
-        exibirLinha("Jogo removido (se estava no pedido).");
+        exibirLinha("Uma unidade do jogo foi removida (se estava no pedido).");
     }
 
     public char lerAlterarCupom() {

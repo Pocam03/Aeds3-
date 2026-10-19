@@ -2,9 +2,13 @@ package model;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class PedidoDAO {
     private Arquivo<Pedido> arqPedidos;
+    private ClienteDAO clienteDAO;
     private JogoDAO jogoDAO;
     private CupomDAO cupomDAO;
     private PedidoJogoDAO pedidoJogoDAO; // entidade associativa Pedido_Jogo (N:N com Jogo)
@@ -13,6 +17,7 @@ public class PedidoDAO {
 
     public PedidoDAO() throws Exception {
         arqPedidos = new Arquivo<>("pedidos", Pedido.class.getConstructor());
+        clienteDAO = new ClienteDAO();
         jogoDAO = new JogoDAO();
         cupomDAO = new CupomDAO();
         pedidoJogoDAO = new PedidoJogoDAO();
@@ -58,19 +63,35 @@ public class PedidoDAO {
         return pedidosCliente;
     }
 
+    /**
+     * Agrupa a lista de IDs de jogos em (idJogo -> quantidade): cada ID
+     * repetido na lista é uma unidade a mais do mesmo jogo. Como
+     * (idPedido, idJogo) é chave composta, cada jogo vira um único item.
+     */
+    private static LinkedHashMap<Integer, Integer> contarQuantidades(List<Integer> idJogos) {
+        LinkedHashMap<Integer, Integer> quantidades = new LinkedHashMap<>();
+        for (int idJogo : idJogos) quantidades.merge(idJogo, 1, Integer::sum);
+        return quantidades;
+    }
+
     /*
      Cria um novo pedido a partir do cliente, da lista de IDs de jogos
      e do ID de um cupom. Busca os jogos e o cupom, calcula o valor final e grava o pedido.
      */
     public Pedido incluirPedido(int idCliente, ArrayList<Integer> idJogos, int idCupom) throws Exception {
-        // Jogos existentes agora; título e preço são copiados para Pedido_Jogo
-        ArrayList<Jogo> jogosComprados = new ArrayList<>();
-        for (int idJogo : idJogos) {
-            Jogo jogo = jogoDAO.buscarJogo(idJogo);
+        // integridade referencial: o pedido precisa de um cliente existente
+        if (clienteDAO.buscarCliente(idCliente) == null) return null;
+
+        // Jogos existentes agora (com a quantidade de cada um); título e preço
+        // são copiados para Pedido_Jogo.
+        LinkedHashMap<Jogo, Integer> jogosComprados = new LinkedHashMap<>();
+        for (Map.Entry<Integer, Integer> e : contarQuantidades(idJogos).entrySet()) {
+            Jogo jogo = jogoDAO.buscarJogo(e.getKey());
             if (jogo != null) {
-                jogosComprados.add(jogo);
+                jogosComprados.put(jogo, e.getValue());
             }
         }
+        if (jogosComprados.isEmpty()) return null; // pedido sem nenhum jogo válido
 
         Cupom cupom = null;
         if (idCupom != -1) {
@@ -80,7 +101,7 @@ public class PedidoDAO {
         Pedido pedido = new Pedido(idCliente, new ArrayList<>(), idCupom);
         // valor calculado a partir dos mesmos preços que serão gravados nos itens
         ArrayList<PedidoJogo> previa = new ArrayList<>();
-        for (Jogo jogo : jogosComprados) previa.add(new PedidoJogo(-1, jogo));
+        for (Map.Entry<Jogo, Integer> e : jogosComprados.entrySet()) previa.add(new PedidoJogo(-1, e.getKey(), e.getValue()));
         pedido.calcularValorFinal(previa, cupom);
 
         if (arqPedidos.create(pedido) <= 0) return null;
@@ -90,8 +111,8 @@ public class PedidoDAO {
         indiceCliente.inserir(idCliente, endereco);
 
         ArrayList<PedidoJogo> itens = new ArrayList<>();
-        for (Jogo jogo : jogosComprados) {
-            itens.add(pedidoJogoDAO.incluir(pedido.getId(), jogo));
+        for (Map.Entry<Jogo, Integer> e : jogosComprados.entrySet()) {
+            itens.add(pedidoJogoDAO.incluir(pedido.getId(), e.getKey(), e.getValue()));
         }
         pedido.setItens(itens);
 
@@ -100,10 +121,11 @@ public class PedidoDAO {
 
     /**
      * Atualiza um pedido já existente. Os jogos são sincronizados com
-     * Pedido_Jogo: itens que continuam no pedido são mantidos como estão
-     * (inclusive os de jogos já excluídos do catálogo, com o preço original),
-     * itens removidos são apagados e jogos novos entram com título e preço
-     * atuais. O valor final é recalculado a partir dos preços gravados.
+     * Pedido_Jogo: itens que continuam no pedido são mantidos (inclusive os
+     * de jogos já excluídos do catálogo, com o preço original), só com a
+     * quantidade atualizada; itens removidos são apagados e jogos novos
+     * entram com título e preço atuais. O valor final é recalculado a partir
+     * dos preços gravados.
      */
     public boolean alterarPedido(Pedido pedido) throws Exception {
         long enderecoAntigo = indiceId.buscar(pedido.getId());
@@ -111,22 +133,30 @@ public class PedidoDAO {
 
         ArrayList<PedidoJogo> existentes = pedidoJogoDAO.listarPorPedido(pedido.getId());
         ArrayList<PedidoJogo> mantidos = new ArrayList<>();
-        ArrayList<Jogo> novos = new ArrayList<>();
+        ArrayList<PedidoJogo> alterados = new ArrayList<>(); // mantidos com quantidade diferente
+        LinkedHashMap<Jogo, Integer> novos = new LinkedHashMap<>();
 
-        for (int idJogo : pedido.getIdJogos()) {
+        for (Map.Entry<Integer, Integer> e : contarQuantidades(pedido.getIdJogos()).entrySet()) {
+            int idJogo = e.getKey();
+            int quantidade = e.getValue();
             PedidoJogo igual = null;
             for (PedidoJogo item : existentes) {
                 if (item.getIdJogo() == idJogo) { igual = item; break; }
             }
             if (igual != null) {
                 existentes.remove(igual);
+                if (igual.getQuantidade() != quantidade) {
+                    igual.setQuantidade(quantidade);
+                    alterados.add(igual);
+                }
                 mantidos.add(igual);
             } else {
                 Jogo jogo = jogoDAO.buscarJogo(idJogo);
-                if (jogo != null) novos.add(jogo);
+                if (jogo != null) novos.put(jogo, quantidade);
             }
         }
         // o que sobrou em "existentes" foi removido do pedido
+        if (mantidos.isEmpty() && novos.isEmpty()) return false; // pedido não pode ficar sem jogos
 
         Cupom cupom = null;
         if (pedido.getIdCupom() != -1) {
@@ -134,7 +164,7 @@ public class PedidoDAO {
         }
 
         ArrayList<PedidoJogo> itensFinais = new ArrayList<>(mantidos);
-        for (Jogo jogo : novos) itensFinais.add(new PedidoJogo(-1, jogo));
+        for (Map.Entry<Jogo, Integer> e : novos.entrySet()) itensFinais.add(new PedidoJogo(-1, e.getKey(), e.getValue()));
         pedido.calcularValorFinal(itensFinais, cupom);
 
         long enderecoNovo = arqPedidos.updateNoEndereco(enderecoAntigo, pedido);
@@ -148,8 +178,9 @@ public class PedidoDAO {
         }
 
         for (PedidoJogo removido : existentes) pedidoJogoDAO.excluir(removido);
+        for (PedidoJogo alterado : alterados) pedidoJogoDAO.alterar(alterado);
         ArrayList<PedidoJogo> gravados = new ArrayList<>(mantidos);
-        for (Jogo jogo : novos) gravados.add(pedidoJogoDAO.incluir(pedido.getId(), jogo));
+        for (Map.Entry<Jogo, Integer> e : novos.entrySet()) gravados.add(pedidoJogoDAO.incluir(pedido.getId(), e.getKey(), e.getValue()));
         pedido.setItens(gravados);
 
         return true;

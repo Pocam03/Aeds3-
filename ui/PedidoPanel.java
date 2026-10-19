@@ -184,8 +184,9 @@ public class PedidoPanel extends JPanel {
             for (PedidoJogo item : pedido.getItens()) {
                 Jogo atual = jogoDAO.buscarJogo(item.getIdJogo());
                 linhas.add(new Object[]{
-                        item.getIdJogo(), item.getTitulo(),
+                        item.getIdJogo(), item.getTitulo(), item.getQuantidade(),
                         String.format("R$ %.2f", item.getPreco()),
+                        String.format("R$ %.2f", item.getSubtotal()),
                         atual == null ? "Excluído do catálogo" : "No catálogo",
                         atual == null ? "-" : String.format("R$ %.2f", atual.getPreco())
                 });
@@ -193,7 +194,7 @@ public class PedidoPanel extends JPanel {
             UiUtil.mostrarTabela(this, "Jogos do pedido " + id,
                     "Pedido " + id + " — valor final R$ " + String.format("%.2f", pedido.getValorFinal())
                             + " (dados gravados na compra)",
-                    new String[]{"ID Jogo", "Título (na compra)", "Preço pago", "Situação", "Preço atual"}, linhas);
+                    new String[]{"ID Jogo", "Título (na compra)", "Qtd.", "Preço unit. pago", "Subtotal", "Situação", "Preço atual"}, linhas);
         } catch (Exception ex) {
             UiUtil.erro(this, "Erro ao carregar jogos do pedido", ex);
         }

@@ -207,11 +207,12 @@ public class JogoPanel extends JPanel {
         try {
             List<Object[]> linhas = new ArrayList<>();
             for (PedidoJogo item : pedidoJogoDAO.listarPorJogo(id)) {
-                linhas.add(new Object[]{item.getIdPedido(), item.getTitulo(), String.format("R$ %.2f", item.getPreco())});
+                linhas.add(new Object[]{item.getIdPedido(), item.getTitulo(), item.getQuantidade(),
+                        String.format("R$ %.2f", item.getPreco())});
             }
             UiUtil.mostrarTabela(this, "Pedidos do jogo " + id,
                     "Pedidos que contêm o jogo " + id + " (" + linhas.size() + ")",
-                    new String[]{"ID Pedido", "Título (na compra)", "Preço pago"}, linhas);
+                    new String[]{"ID Pedido", "Título (na compra)", "Qtd.", "Preço unit. pago"}, linhas);
         } catch (Exception ex) {
             UiUtil.erro(this, "Erro ao listar pedidos do jogo", ex);
         }
@@ -224,12 +225,12 @@ public class JogoPanel extends JPanel {
             for (PedidoJogo item : pedidoJogoDAO.listarTodos()) {
                 if (jogoDAO.buscarJogo(item.getIdJogo()) == null) {
                     linhas.add(new Object[]{item.getIdPedido(), item.getIdJogo(), item.getTitulo(),
-                            String.format("R$ %.2f", item.getPreco())});
+                            item.getQuantidade(), String.format("R$ %.2f", item.getPreco())});
                 }
             }
             UiUtil.mostrarTabela(this, "Jogos excluídos ainda presentes em pedidos",
                     "Itens de pedidos cujo jogo não existe mais no catálogo (" + linhas.size() + ")",
-                    new String[]{"ID Pedido", "ID Jogo", "Título (na compra)", "Preço pago"}, linhas);
+                    new String[]{"ID Pedido", "ID Jogo", "Título (na compra)", "Qtd.", "Preço unit. pago"}, linhas);
         } catch (Exception ex) {
             UiUtil.erro(this, "Erro ao listar itens", ex);
         }

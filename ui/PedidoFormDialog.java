@@ -33,6 +33,7 @@ public class PedidoFormDialog extends JDialog {
         final float preco;
 
         final boolean removidoDoCatalogo;
+        int quantidade = 1; // só usado na lista "Jogos no pedido"
 
         JogoItem(Jogo j) {
             this.id = j.getId();
@@ -47,10 +48,20 @@ public class PedidoFormDialog extends JDialog {
             this.titulo = item.getTitulo();
             this.preco = item.getPreco();
             this.removidoDoCatalogo = removidoDoCatalogo;
+            this.quantidade = item.getQuantidade();
+        }
+
+        // cópia para a lista do pedido, com quantidade própria
+        JogoItem(JogoItem outro) {
+            this.id = outro.id;
+            this.titulo = outro.titulo;
+            this.preco = outro.preco;
+            this.removidoDoCatalogo = outro.removidoDoCatalogo;
         }
 
         public String toString() {
-            return id + " - " + titulo + " (R$ " + String.format("%.2f", preco) + ")"
+            return (quantidade > 1 ? quantidade + "× " : "")
+                    + id + " - " + titulo + " (R$ " + String.format("%.2f", preco) + ")"
                     + (removidoDoCatalogo ? " [fora do catálogo]" : "");
         }
     }
@@ -175,14 +186,38 @@ public class PedidoFormDialog extends JDialog {
     }
 
     private void adicionarJogosSelecionados() {
+        // (pedido, jogo) é chave composta: jogo repetido soma a quantidade, não vira outra linha
         for (JogoItem item : listaDisponiveis.getSelectedValuesList()) {
-            modeloNoPedido.addElement(item);
+            int idx = indiceNoPedido(item.id);
+            if (idx == -1) {
+                modeloNoPedido.addElement(new JogoItem(item));
+            } else {
+                JogoItem noPedido = modeloNoPedido.get(idx);
+                noPedido.quantidade++;
+                modeloNoPedido.set(idx, noPedido); // redesenha a linha
+            }
         }
     }
 
+    private int indiceNoPedido(int idJogo) {
+        for (int i = 0; i < modeloNoPedido.size(); i++) {
+            if (modeloNoPedido.get(i).id == idJogo) return i;
+        }
+        return -1;
+    }
+
+    // remove uma unidade; a linha some quando a quantidade chega a zero
     private void removerJogoSelecionado() {
         int idx = listaNoPedido.getSelectedIndex();
-        if (idx >= 0) modeloNoPedido.remove(idx);
+        if (idx < 0) return;
+        JogoItem item = modeloNoPedido.get(idx);
+        if (item.quantidade > 1) {
+            item.quantidade--;
+            modeloNoPedido.set(idx, item);
+            listaNoPedido.setSelectedIndex(idx);
+        } else {
+            modeloNoPedido.remove(idx);
+        }
     }
 
     private void salvar() {
@@ -213,7 +248,11 @@ public class PedidoFormDialog extends JDialog {
         }
 
         List<Integer> idJogos = new ArrayList<>();
-        for (int i = 0; i < modeloNoPedido.size(); i++) idJogos.add(modeloNoPedido.get(i).id);
+        // um ID repetido na lista = uma unidade a mais (o PedidoDAO agrupa por jogo)
+        for (int i = 0; i < modeloNoPedido.size(); i++) {
+            JogoItem item = modeloNoPedido.get(i);
+            for (int q = 0; q < item.quantidade; q++) idJogos.add(item.id);
+        }
 
         this.idJogosFinal = idJogos;
         this.idCupomFinal = idCupomResolvido;

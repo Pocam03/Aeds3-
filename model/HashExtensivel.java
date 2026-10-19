@@ -22,6 +22,11 @@ import java.io.RandomAccessFile;
  * as PKs são inteiros sequenciais, os bits menos significativos já
  * distribuem bem as chaves entre os baldes.
  *
+ * O diretório é relido do disco no início de cada busca/inserção/remoção:
+ * vários DAOs (ex.: as abas da interface) mantêm instâncias próprias sobre
+ * os mesmos arquivos, e uma cópia só em memória ficaria desatualizada quando
+ * outra instância duplica o diretório ou o reconstrói (ordenação externa).
+ *
  * Simplificação assumida (mesma da ArvoreBMais): a remoção apaga a entrada
  * do balde mas não funde baldes subdimensionados nem reduz a profundidade
  * global. Isso não compromete a corretude da busca, só a compactação do
@@ -134,6 +139,7 @@ public class HashExtensivel {
 
     /** Retorna o endereço associado à chave, ou -1 se ela não estiver indexada. */
     public long buscar(int chave) throws Exception {
+        carregarDiretorio(); // outra instância sobre os mesmos arquivos pode ter mudado o diretório
         Balde b = lerBalde(diretorio[posicaoDiretorio(chave)]);
         for (int i = 0; i < b.n; i++) {
             if (b.chaves[i] == chave) return b.referencias[i];
@@ -151,6 +157,7 @@ public class HashExtensivel {
      * registro para outro endereço).
      */
     public void inserir(int chave, long referencia) throws Exception {
+        carregarDiretorio();
         int pos = posicaoDiretorio(chave);
         Balde b = lerBalde(diretorio[pos]);
 
@@ -240,6 +247,7 @@ public class HashExtensivel {
     // ---------------------------------------------------------------
 
     public boolean remover(int chave) throws Exception {
+        carregarDiretorio();
         int pos = posicaoDiretorio(chave);
         Balde b = lerBalde(diretorio[pos]);
 
